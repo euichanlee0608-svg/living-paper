@@ -1,0 +1,78 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>QR encoder — reference comparison</title>
+<style>
+  body{font:13px/1.6 ui-monospace,Menlo,Consolas,monospace;background:#08090A;color:#8A8F98;padding:24px;margin:0}
+  h1{font-size:15px;color:#D0D6E0;margin:0 0 4px;font-weight:510}
+  p{margin:0 0 18px;font-size:12px}
+  .t{padding:5px 0;border-bottom:1px solid #23252A}
+  .ok::before{content:"MATCH  ";color:#27A644}
+  .fail::before{content:"DIFF   ";color:#EB5757}
+  .fail{color:#EB5757}
+  .msg{color:#62666D;padding-left:56px;white-space:pre-wrap}
+  #sum{margin-top:18px;font-size:14px;color:#D0D6E0}
+</style>
+<h1>QR encoder — reference comparison</h1>
+<p>src/ui/components/qr.js vs the Python <code>qrcode</code> library, module for module, at every mask.</p>
+<div id="out"></div>
+<div id="sum">running…</div>
+<script type="module">
+import { encodeQR } from '../src/ui/components/qr.js';
+
+const out = document.getElementById('out');
+let pass = 0, fail = 0;
+const results = [];
+
+function row(name, ok, msg) {
+  const el = document.createElement('div');
+  el.className = 't ' + (ok ? 'ok' : 'fail');
+  el.textContent = name;
+  if (msg) {
+    const m = document.createElement('div');
+    m.className = 'msg';
+    m.textContent = msg;
+    el.appendChild(m);
+  }
+  out.appendChild(el);
+  ok ? pass++ : fail++;
+  results.push({ name, ok, msg });
+}
+
+const ref = await (await fetch('./qr-reference.json')).json();
+
+for (const c of ref) {
+  const label = JSON.stringify(c.text.length > 32 ? c.text.slice(0, 32) + '…' : c.text);
+
+  // version selection must agree before anything else can
+  let mine;
+  try {
+    mine = encodeQR(c.text);
+  } catch (e) {
+    row(`${label} — encode`, false, e.message);
+    continue;
+  }
+  if (mine.version !== c.version) {
+    row(`${label} — version`, false, `expected v${c.version}, got v${mine.version}`);
+    continue;
+  }
+  row(`${label} — version v${c.version}, ${mine.size}×${mine.size}`, true);
+
+  for (const [mask, expected] of Object.entries(c.masks)) {
+    const got = encodeQR(c.text, { mask: Number(mask) });
+    const rows = got.matrix.map((r) => [...r].join(''));
+    if (rows.length !== expected.length) {
+      row(`${label} — mask ${mask}`, false, `size ${rows.length} vs ${expected.length}`);
+      continue;
+    }
+    const bad = rows.findIndex((r, i) => r !== expected[i]);
+    if (bad < 0) row(`${label} — mask ${mask}`, true);
+    else row(`${label} — mask ${mask}`, false,
+      `first differing row ${bad}\nref  ${expected[bad]}\nmine ${rows[bad]}`);
+  }
+}
+
+const sum = document.getElementById('sum');
+sum.textContent = `${pass} matched, ${fail} differed`;
+sum.style.color = fail ? '#EB5757' : '#27A644';
+window.__QRTEST__ = { pass, fail, failures: results.filter((r) => !r.ok) };
+</script>

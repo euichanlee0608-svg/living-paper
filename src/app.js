@@ -11,9 +11,10 @@ import { STORES, uid } from './data/db.js';
 import { generateIdentity } from './crypto/keys.js';
 import { seal, open, relayView, envelopeSize } from './crypto/envelope.js';
 import {
-  createLabKey, generateRecoveryCode, sealWithRecoveryCode,
+  createLabKey, generateRecoveryCode, sealWithRecoveryCode, wrapLabKeyFor,
 } from './crypto/labkey.js';
 import { fingerprint } from './crypto/fingerprint.js';
+import { toB64u, fromB64u, te, td } from './crypto/base.js';
 import { MockRelay, HttpRelay } from './net/relay.js';
 import { NodeSimulator } from './net/nodesim.js';
 import { DEMO_LAB, DEMO_MEETING, DEMO_MOMENTS, GLOSSARY, DOCS } from './data/seed.js';
@@ -35,6 +36,9 @@ export const state = {
   answers: new Map(),    // jobId -> answer
   meetings: [],
   recoveryCode: null,    // shown once, at lab creation
+  ingested: [],          // documents pushed into the lab KB from this device
+  relayCfg: null,        // { url, token } when connected to a real relay
+  members: [],           // devices granted the lab key from here
 };
 
 /* ---------------- boot ---------------- */
@@ -84,6 +88,7 @@ export async function boot() {
  *  points the same client at a real relay and a real on-prem node. */
 export async function connect() {
   const cfg = await db.getSetting('relay', null);
+  state.relayCfg = cfg?.url ? cfg : null;
   if (cfg?.url) {
     state.mode = 'connected';
     state.relay = new HttpRelay(cfg.url, cfg.token);
@@ -286,6 +291,14 @@ export async function askAbout(moment) {
 }
 
 async function onEnvelope(env) {
+  if (env.aad.type === 'kb-ingest-ack') {
+    let ack;
+    try { ack = await open(env, state.identity, state.node?.pub || null); } catch { return; }
+    const doc = state.ingested.find((d) => d.docId === ack.docId);
+    if (doc) { doc.status = 'indexed'; doc.chunks = ack.chunks; }
+    emit('ingest', { docId: ack.docId });
+    return;
+  }
   if (env.aad.type !== 'explain-answer') return;
   const jobId = env.aad.jobId;
   const job = state.jobs.get(jobId);
@@ -308,6 +321,110 @@ async function onEnvelope(env) {
   }
   emit('answer', { jobId });
   emit('job', { jobId });
+}
+
+/* ---------------- knowledge base ingestion ---------------- */
+
+/** Chunk locally, seal, hand to the node. The file itself never leaves
+ *  the device unsealed, and the relay only ever sees the envelope. */
+export async function ingestDocument({ title, kind, chunks, bytes }) {
+  if (!state.node?.pub) throw new Error('연결된 랩 노드가 없습니다');
+  const docId = uid('doc');
+  const jobId = uid('ing');
+
+  const envelope = await seal(
+    { docId, title, kind, chunks, replyTo: state.identity.pub },
+    {
+      sender: state.identity,
+      recipients: [state.node.pub],
+      aad: { labId: state.lab?.labId || DEMO_LAB.labId, jobId, type: 'kb-ingest', ts: Date.now() },
+    },
+  );
+
+  const record = {
+    docId, title, kind, bytes, chunks: chunks.length,
+    status: 'sending', at: Date.now(), sizeBytes: envelopeSize(envelope),
+    relaySees: relayView(envelope),
+  };
+  state.ingested.unshift(record);
+  emit('ingest', { docId });
+
+  await state.relay.postEnvelope(envelope);
+  return docId;
+}
+
+/* ---------------- membership ---------------- */
+
+/** An invite carries only public material: which lab, which relay, and
+ *  the inviter's key fingerprint so the joiner can verify who they are
+ *  talking to. The lab key is never in here — it is wrapped to the
+ *  joiner's device key only after their public bundle comes back. */
+export async function createInvite() {
+  if (!state.lab) throw new Error('랩이 없습니다');
+  const fp = await fingerprint(state.identity.pub);
+  return {
+    v: 1,
+    lab: state.lab.labId,
+    labName: state.lab.name,
+    relay: state.relayCfg?.url || 'demo',
+    by: state.identity.kid,
+    fp: fp.short,
+    exp: Date.now() + 24 * 3600 * 1000,
+  };
+}
+
+// btoa() is Latin-1 only, and lab names are Korean — encode the UTF-8
+// bytes instead of the string.
+export const inviteToText = (invite) =>
+  `lp1:${toB64u(te.encode(JSON.stringify(invite)))}`;
+
+export function parseInvite(text) {
+  const raw = String(text).trim().replace(/^lp1:/, '');
+  const invite = JSON.parse(td.decode(fromB64u(raw)));
+  if (invite.v !== 1) throw new Error('지원하지 않는 초대 형식입니다');
+  if (invite.exp && invite.exp < Date.now()) throw new Error('만료된 초대입니다');
+  return invite;
+}
+
+/** Grant a joiner the lab key by wrapping it to their device public key. */
+export async function grantLabKey(memberPub) {
+  const { lmk } = await open(state.lab.lmkEnvelope, state.identity, state.identity.pub);
+  const bytes = new Uint8Array(lmk);
+  const env = await wrapLabKeyFor(bytes, memberPub, state.identity, state.lab.labId);
+  bytes.fill(0);
+  const fp = await fingerprint(memberPub);
+  state.members.push({ kid: memberPub.kid, fp, at: Date.now() });
+  await state.relay.postEnvelope(env);
+  emit('members');
+  return env;
+}
+
+/* ---------------- relay connection ---------------- */
+
+export async function testRelay(url, token) {
+  const base = url.replace(/\/$/, '');
+  const res = await fetch(base + '/health', {
+    headers: token ? { authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new Error(`상태 코드 ${res.status}`);
+  return res.json();
+}
+
+export async function setRelay(cfg) {
+  await db.setSetting('relay', cfg);
+  state.relayCfg = cfg;
+  if (state.relay?.stopPolling) state.relay.stopPolling();
+  state.nodeSim?.stop();
+  state.nodeSim = null;
+  state.node = null;
+  await connect();
+}
+
+export async function useDemoMode() {
+  await db.setSetting('relay', null);
+  state.relayCfg = null;
+  if (state.relay?.stopPolling) state.relay.stopPolling();
+  await connect();
 }
 
 /* ---------------- misc ---------------- */

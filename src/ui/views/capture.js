@@ -78,7 +78,7 @@ function idleHTML() {
 
       <div class="card card-pad stack">
         <div>
-          <label class="label" for="mtitle">미팅 이름</label>
+          <label class="sec-label" for="mtitle">미팅 이름</label>
           <input id="mtitle" class="field" style="margin-top:7px"
                  placeholder="${esc('예: 4월 정기 랩미팅')}" autocomplete="off">
         </div>
@@ -90,28 +90,28 @@ function idleHTML() {
         </p>
       </div>
 
-      <div class="card card-pad" style="margin-top:var(--sp-4)">
+      <div class="card card-pad" style="margin-top:var(--s4)">
         <div class="between">
           <div>
-            <div style="font-weight:700;color:var(--ink);font-size:15px">처음이신가요?</div>
+            <div style="font-weight:700;color:var(--text);font-size:15px">처음이신가요?</div>
             <div class="tiny mut" style="margin-top:3px">
               실제 랩미팅 하나를 예시로 넣어 두었습니다. 바로 정리 단계부터 볼 수 있습니다.
             </div>
           </div>
         </div>
-        <button class="btn btn-ghost btn-block" data-demo style="margin-top:var(--sp-4)">
+        <button class="btn btn-block" data-demo style="margin-top:var(--s4)">
           ${raw(ico('sparkles'))} 예시 미팅으로 둘러보기
         </button>
       </div>
 
       ${recent.length ? html`
-        <div style="margin-top:var(--sp-6)">
-          <div class="label" style="margin-bottom:10px">지난 미팅</div>
+        <div style="margin-top:var(--s6)">
+          <div class="sec-label" style="margin-bottom:10px">지난 미팅</div>
           <div class="card">
             ${recent.map((m) => html`
               <div class="moment" style="align-items:center">
                 <div class="grow">
-                  <div style="font-weight:650;color:var(--ink);font-size:14.5px">${m.title}</div>
+                  <div style="font-weight:650;color:var(--text);font-size:14.5px">${m.title}</div>
                   <div class="tiny mut" style="margin-top:3px">
                     ${new Date(m.startedAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   </div>
@@ -126,10 +126,10 @@ function liveHTML() {
   const n = state.moments.length;
   return html`
     <div class="view capture">
-      <div class="capture-meta">
+      <div class="capture-head">
         <div class="t">${state.meeting.title}</div>
         <div class="capture-timer" style="margin-top:8px">${fmtTime((Date.now() - state.meeting.startedAt) / 1000)}</div>
-        <div class="tiny mut" style="margin-top:6px">표시한 지점 <b data-count style="color:var(--accent-text)">${n}</b>개</div>
+        <div class="tiny mut" style="margin-top:6px">표시한 지점 <b data-count style="color:var(--accent)">${n}</b>개</div>
       </div>
 
       <button class="miss-btn" data-miss aria-label="지금 순간을 표시">
@@ -142,6 +142,6 @@ function liveHTML() {
           <span class="mark-chip">${raw(ico('tag'))}${fmtTime(m.atSec)}</span>`)}
       </div>
 
-      <button class="btn btn-ghost" data-end style="min-width:190px">미팅 종료하고 정리하기</button>
+      <button class="btn" data-end style="min-width:190px">미팅 종료하고 정리하기</button>
     </div>`;
 }

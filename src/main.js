@@ -14,6 +14,9 @@ function fatal(msg, detail) {
     </div>`;
 }
 
+// Dark unless the user chose otherwise: meetings happen in dim rooms.
+document.documentElement.setAttribute('data-theme', localStorage.getItem('lp-theme') || 'dark');
+
 (async () => {
   if (!window.isSecureContext || !crypto?.subtle) {
     return fatal('이 앱은 WebCrypto가 필요합니다. HTTPS 또는 localhost에서 열어 주세요.');

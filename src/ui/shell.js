@@ -10,6 +10,7 @@ import * as review from './views/review.js';
 import * as answers from './views/answers.js';
 import * as kb from './views/kb.js';
 import * as security from './views/security.js';
+import * as settings from './views/settings.js';
 
 const TABS = [
   { id: 'capture',  label: '미팅',    icon: 'mic' },
@@ -17,9 +18,10 @@ const TABS = [
   { id: 'answers',  label: '설명',    icon: 'sparkles' },
   { id: 'kb',       label: '지식',    icon: 'book' },
   { id: 'security', label: '보안',    icon: 'shield' },
+  { id: 'settings', label: '설정',    icon: 'server' },
 ];
 
-const VIEWS = { capture, review, answers, kb, security };
+const VIEWS = { capture, review, answers, kb, security, settings };
 let current = null;
 
 export function mount(app) {
@@ -41,13 +43,15 @@ export function mount(app) {
       <main class="main" id="outlet"></main>
     </div>
 
-    <nav class="tabbar" id="tabbar" aria-label="주요 화면"></nav>`;
+    <nav class="tabbar" id="tabbar" aria-label="주요 화면"
+         style="--tabs:${TABS.length}"></nav>`;
 
   paintNav();
   window.addEventListener('hashchange', route);
   bus.addEventListener('answer', paintNav);
   bus.addEventListener('job', paintNav);
   bus.addEventListener('connection', paintNav);
+  bus.addEventListener('ingest', paintNav);
   route();
 }
 

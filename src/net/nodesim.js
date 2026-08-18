@@ -34,6 +34,8 @@ export class NodeSimulator {
     this.deviceLabel = deviceLabel;
     this.identity = null;
     this.senderKeys = new Map();  // kid -> public bundle, for signature checks
+    this.corpus = [];             // ingested chunks
+    this.docs = [];               // ingested document manifest
     this.onStage = null;          // (jobId, stageId, label, done) => void
     this._unsub = null;
   }
@@ -52,6 +54,7 @@ export class NodeSimulator {
   trust(pub) { this.senderKeys.set(pub.kid, pub); }
 
   async _handle(env) {
+    if (env.aad.type === 'kb-ingest') return this._ingest(env);
     if (env.aad.type !== 'explain-request') return;
     const jobId = env.aad.jobId;
     const t0 = performance.now();
@@ -80,8 +83,60 @@ export class NodeSimulator {
     await this.relay.postEnvelope(back);
   }
 
+  /** Documents arrive sealed exactly like questions do. On a real node
+   *  this is where embedding + indexing happens; here we keep the chunks
+   *  in memory and score them by token overlap, which is enough to show
+   *  that an ingested document changes the answers. */
+  async _ingest(env) {
+    let doc;
+    try {
+      doc = await open(env, this.identity, this.senderKeys.get(env.sender) || null);
+    } catch (e) {
+      console.warn('[node] rejected ingest', e.message);
+      return;
+    }
+    const stored = doc.chunks.map((c, i) => ({
+      ...c, docId: doc.docId, docTitle: doc.title, kind: doc.kind, i,
+    }));
+    this.corpus.push(...stored);
+    this.docs.push({ docId: doc.docId, title: doc.title, kind: doc.kind,
+                     chunks: stored.length, at: Date.now() });
+
+    const back = await seal(
+      { docId: doc.docId, chunks: stored.length, indexed: true },
+      { sender: this.identity,
+        recipients: [this.senderKeys.get(env.sender) || doc.replyTo].filter(Boolean),
+        aad: { labId: env.aad.labId, jobId: env.aad.jobId, type: 'kb-ingest-ack', ts: Date.now() } },
+    );
+    await this.relay.postEnvelope(back);
+  }
+
+  /** Score ingested chunks against the query. Deliberately dumb (token
+   *  overlap): the point is the plumbing, and node/server.py is where a
+   *  real embedding index goes. */
+  _searchCorpus(query) {
+    const q = (query || '').toLowerCase().trim();
+    if (!q || !this.corpus.length) return [];
+    // tokenise on the spaced query — collapsing whitespace first would
+    // fuse every word into one token that matches nothing
+    const terms = [...new Set(q.match(/[가-힣]{2,}|[a-z0-9]{2,}/g) || [])];
+    if (!terms.length) return [];
+    return this.corpus
+      .map((c) => {
+        const hay = c.text.toLowerCase();
+        let score = 0;
+        for (const t of terms) if (hay.includes(t)) score += t.length;
+        return { c, score };
+      })
+      .filter((x) => x.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3)
+      .map((x) => x.c);
+  }
+
   _explain({ keyword, note, meeting, atSec }, ms) {
     const hit = findGlossary(keyword);
+    const found = this._searchCorpus(`${keyword} ${note || ''}`);
     const base = {
       jobId: null, term: keyword, simulated: true,
       meta: {
@@ -92,6 +147,25 @@ export class NodeSimulator {
         labId: DEMO_LAB.labId,
       },
     };
+
+    if (!hit && found.length) {
+      // nothing in the curated glossary, but an uploaded document matches
+      return {
+        ...base,
+        grounded: true,
+        confidence: 0.71,
+        oneLine: found[0].text.slice(0, 220) + (found[0].text.length > 220 ? '…' : ''),
+        inThisLab: `업로드한 「${found[0].docTitle}」에서 이 내용을 찾았습니다. 아래 발췌를 확인하세요.`,
+        whyItCameUp: this._contextLine({ note, meeting, atSec, term: keyword }),
+        citations: found.map((c) => ({
+          docId: c.docId, title: c.docTitle, kind: c.kind, updated: '방금 수집',
+          quote: c.text.slice(0, 200) + (c.text.length > 200 ? '…' : ''),
+        })),
+        followUps: ['이 문서의 다른 부분도 보여주세요', '용어집에 항목으로 등록하기',
+                    '관련된 이전 미팅을 찾아주세요'],
+        meta: { ...base.meta, retrieved: found.length },
+      };
+    }
 
     if (!hit) {
       return {

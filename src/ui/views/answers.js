@@ -55,8 +55,8 @@ function draw(root) {
           ${raw(ico('sparkles'))}
           <b>설명이 아직 없습니다</b>
           정리 탭에서 키워드를 넣고 설명을 요청하면 여기에 쌓입니다.
-          <div style="margin-top:var(--sp-4)">
-            <button class="btn btn-ghost" data-goreview>정리하러 가기</button>
+          <div style="margin-top:var(--s4)">
+            <button class="btn" data-goreview>정리하러 가기</button>
           </div>
         </div>` : entries.map(({ jobId, a, job }) => answerHTML(jobId, a, job))}
     </div>`;
@@ -67,7 +67,7 @@ function answerHTML(jobId, a, job) {
   const low = !a.grounded;
 
   return html`
-    <div class="card answer" style="margin-bottom:var(--sp-4)">
+    <div class="card answer" style="margin-bottom:var(--s4)">
       <div class="answer-head">
         <div class="between wrap" style="align-items:flex-start">
           <div class="grow">
@@ -80,7 +80,7 @@ function answerHTML(jobId, a, job) {
           <div class="conf" title="근거 문서 기반 신뢰도">
             <span class="tiny mut">신뢰도</span>
             <span class="conf-bar ${low ? 'low' : ''}"><i style="width:${conf}%"></i></span>
-            <span class="tiny" style="color:${low ? 'var(--warn)' : 'var(--accent-text)'};font-weight:700">${conf}%</span>
+            <span class="tiny" style="color:${low ? 'var(--amber)' : 'var(--accent)'};font-weight:700">${conf}%</span>
           </div>
         </div>
         <div class="row wrap" style="margin-top:11px;gap:6px">
@@ -94,13 +94,13 @@ function answerHTML(jobId, a, job) {
 
       <div class="answer-body">
         <div class="blk">
-          <div class="label">한 줄 정의</div>
+          <div class="sec-label">한 줄 정의</div>
           <p>${a.oneLine}</p>
         </div>
 
         ${a.inThisLab ? html`
           <div class="blk lab-blk">
-            <div class="label">우리 랩에서는</div>
+            <div class="sec-label">우리 랩에서는</div>
             <p>${a.inThisLab}</p>
           </div>` : ''}
 
@@ -109,13 +109,13 @@ function answerHTML(jobId, a, job) {
 
         ${a.whyItCameUp ? html`
           <div class="blk">
-            <div class="label">이 미팅에서</div>
-            <p class="tiny" style="color:var(--mut);font-size:13.5px">${a.whyItCameUp}</p>
+            <div class="sec-label">이 미팅에서</div>
+            <p class="tiny" style="color:var(--text-4);font-size:13.5px">${a.whyItCameUp}</p>
           </div>` : ''}
 
         ${a.citations?.length ? html`
           <div class="blk">
-            <div class="label">근거 문서</div>
+            <div class="sec-label">근거 문서</div>
             ${a.citations.map((c) => html`
               <div class="cite">
                 <span class="k">${c.kind}</span>
@@ -129,7 +129,7 @@ function answerHTML(jobId, a, job) {
 
         ${a.followUps?.length ? html`
           <div class="blk">
-            <div class="label">이어서 물어보기</div>
+            <div class="sec-label">이어서 물어보기</div>
             <div class="followups">
               ${a.followUps.map((q) => html`
                 <button data-followup>${raw(ico('arrowRight'))}<span>${q}</span></button>`)}
@@ -142,8 +142,8 @@ function answerHTML(jobId, a, job) {
             ${a.meta?.model || 'local'} · ${a.meta?.tokensIn || 0}→${a.meta?.tokensOut || 0} tok · ${a.meta?.ms || 0}ms
           </div>
           <div class="row" style="gap:7px">
-            <button class="btn btn-sm btn-ghost" data-copy="${jobId}">${raw(ico('copy'))} 복사</button>
-            <button class="btn btn-sm btn-ghost" data-peek="${jobId}">${raw(ico('eye'))} 릴레이가 본 것</button>
+            <button class="btn btn-sm" data-copy="${jobId}">${raw(ico('copy'))} 복사</button>
+            <button class="btn btn-sm" data-peek="${jobId}">${raw(ico('eye'))} 릴레이가 본 것</button>
           </div>
         </div>
       </div>

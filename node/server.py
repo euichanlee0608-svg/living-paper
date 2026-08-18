@@ -7,6 +7,10 @@ ever sees plaintext.
     browser ── sealed envelope ──> relay ──> this node
     this node ── sealed answer ──> relay ──> browser
 
+Message types handled:
+    explain-request -> explain-answer   (a question about a meeting moment)
+    kb-ingest       -> kb-ingest-ack    (document chunks for the knowledge base)
+
 Pipeline per request:
     poll relay → open envelope (ECDH → HKDF → AES-GCM, verify ECDSA)
     → retrieve from the lab knowledge base → generate with a local LLM
@@ -276,8 +280,54 @@ def fetch_sender(kid: str) -> dict | None:
 
 
 # ---------------------------------------------------------------- main loop
+def kb_store(con: sqlite3.Connection, lab_key: bytes, lab_id: str, doc: dict) -> int:
+    """Write chunks encrypted under the lab key, row id as AAD so a row
+    cannot be moved to a different id without failing decryption."""
+    n = 0
+    for i, chunk in enumerate(doc.get("chunks", [])):
+        rid = f"{doc['docId']}#{i}"
+        payload = json.dumps({
+            "term": doc.get("title", ""),
+            "text": chunk.get("text", ""),
+            "title": chunk.get("title", ""),
+            "updated": time.strftime("%Y-%m-%d"),
+        }, ensure_ascii=False).encode()
+        iv = os.urandom(12)
+        ct = AESGCM(lab_key).encrypt(iv, payload, rid.encode())
+        con.execute("INSERT OR REPLACE INTO kb VALUES (?,?,?,?,?)",
+                    (rid, lab_id, doc.get("kind", "doc"), iv, ct))
+        n += 1
+    con.commit()
+    return n
+
+
+def handle_ingest(env: dict, me: Identity, con: sqlite3.Connection, lab_key: bytes):
+    aad = env["aad"]
+    sender_pub = fetch_sender(env["sender"])
+    if sender_pub is None:
+        print(f"[node] {aad['jobId']}: unknown sender - ingest dropped")
+        return
+    try:
+        doc = open_envelope(env, me, sender_pub)
+    except AssertionError as e:
+        print(f"[node] {aad['jobId']}: ingest rejected ({e})")
+        return
+
+    n = kb_store(con, lab_key, aad["labId"], doc)
+    print(f"[node] {aad['jobId']}: indexed {n} chunks from {doc.get('title')!r}")
+
+    ack = seal_envelope(
+        {"docId": doc["docId"], "chunks": n, "indexed": True},
+        me, [sender_pub],
+        {"labId": aad["labId"], "jobId": aad["jobId"],
+         "type": "kb-ingest-ack", "ts": int(time.time() * 1000)})
+    relay("POST", "/envelopes", json=ack)
+
+
 def handle(env: dict, me: Identity, con: sqlite3.Connection, lab_key: bytes):
     aad = env["aad"]
+    if aad.get("type") == "kb-ingest":
+        return handle_ingest(env, me, con, lab_key)
     if aad.get("type") != "explain-request":
         return
     t0 = time.time()

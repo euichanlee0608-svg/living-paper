@@ -1,14 +1,15 @@
-/* 지식베이스 — the lab's own vocabulary and documents.
+/* 지식베이스 — the lab's vocabulary, documents, and the ingestion path.
  *
- * On a real install this lives encrypted on the on-prem node and this
- * screen is a read-through view of it. The point of showing it at all is
- * that the answers are only as good as this list — so the user can see
- * exactly what the model was allowed to know, and what is missing.
+ * Answers are only as good as this list, so the screen shows exactly what
+ * the model is allowed to know — and lets you add to it. Parsing and
+ * chunking happen on this device; only sealed chunks reach the node.
  */
+import { state, bus, ingestDocument, fmtBytes } from '../../app.js';
 import { GLOSSARY, DOCS, DEMO_LAB } from '../../data/seed.js';
-import { state } from '../../app.js';
-import { html, raw, scope, esc, toast } from '../dom.js';
+import { extractText, chunkText, guessKind, fmtSize, SUPPORTED } from '../../data/ingest.js';
+import { html, raw, scope, esc, toast, openSheet } from '../dom.js';
 import { ico } from '../icons.js';
+import { relayPeek } from '../components/relaypeek.js';
 
 let query = '';
 const S = scope();
@@ -16,45 +17,150 @@ const S = scope();
 export function render(root) {
   S.clear();
   draw(root);
+  S.listen(bus, 'ingest', () => draw(root));
+
   S.on(root, 'input', '#kbq', (e, el) => { query = el.value; draw(root, true); });
-  S.on(root, 'click', '[data-add]', () =>
-    toast('문서 수집은 원내 노드에서 실행됩니다 (다음 배포)', { icon: ico('server') }));
+  S.on(root, 'click', '[data-add]', () => openIngest(root));
+  S.on(root, 'click', '[data-peek-doc]', (e, el) => {
+    const doc = state.ingested.find((d) => d.docId === el.dataset.peekDoc);
+    if (doc) relayPeek(null, { relaySees: doc.relaySees, sizeBytes: doc.sizeBytes, label: doc.title });
+  });
 }
 
 export function teardown() { S.clear(); }
 
+/* ---------- ingestion sheet ---------- */
+function openIngest(root) {
+  const body = openSheet('문서 추가', html`
+    <div class="stack">
+      <div class="notice notice-lock">${raw(ico('lock'))}
+        <span>파일은 <b>이 기기에서 열리고 잘립니다.</b> 원문은 어디에도 올라가지 않고,
+        조각들만 봉인되어 원내 노드로 갑니다.</span></div>
+
+      <label class="drop" id="drop">
+        ${raw(ico('doc'))}
+        <b>파일을 끌어다 놓거나 눌러서 선택</b>
+        <span>txt · md · csv · json · pdf (텍스트 기반)</span>
+        <input type="file" id="file" accept="${esc(SUPPORTED)}" multiple hidden>
+      </label>
+
+      <div id="stage"></div>
+    </div>`);
+
+  const drop = body.querySelector('#drop');
+  const input = body.querySelector('#file');
+  const stage = body.querySelector('#stage');
+
+  const stop = (e) => { e.preventDefault(); e.stopPropagation(); };
+  ['dragenter', 'dragover'].forEach((t) =>
+    drop.addEventListener(t, (e) => { stop(e); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach((t) =>
+    drop.addEventListener(t, (e) => { stop(e); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', (e) => handle([...e.dataTransfer.files], stage, root));
+  input.addEventListener('change', () => handle([...input.files], stage, root));
+}
+
+async function handle(files, stage, root) {
+  if (!files.length) return;
+  for (const file of files) {
+    const id = 'f' + Math.random().toString(36).slice(2, 8);
+    stage.insertAdjacentHTML('beforeend', String(html`
+      <div class="file-row" id="${id}">
+        <span class="fn">${file.name}</span>
+        <span class="fm">${fmtSize(file.size)}</span>
+      </div>
+      <div class="bar" id="${id}-b"><i style="width:8%"></i></div>`));
+    const rowEl = stage.querySelector('#' + id);
+    const barEl = stage.querySelector('#' + id + '-b i');
+    const setBar = (pct) => { if (barEl) barEl.style.width = pct + '%'; };
+
+    try {
+      setBar(25);
+      const { text, note } = await extractText(file);
+      if (note) {
+        rowEl.insertAdjacentHTML('afterend', String(html`
+          <div class="notice notice-warn" style="margin:6px 0 10px">
+            ${raw(ico('alert'))}<span>${note}</span></div>`));
+        setBar(100);
+        barEl.style.background = 'var(--amber)';
+        continue;
+      }
+      setBar(55);
+      const chunks = chunkText(text, { title: file.name.replace(/\.[^.]+$/, '') });
+      if (!chunks.length) throw new Error('내용이 너무 짧습니다');
+
+      setBar(75);
+      await ingestDocument({
+        title: file.name.replace(/\.[^.]+$/, ''),
+        kind: guessKind(file.name),
+        chunks,
+        bytes: file.size,
+      });
+      setBar(100);
+      rowEl.insertAdjacentHTML('beforeend', String(html`
+        <span class="chip chip-ok">${raw(ico('check'))} ${chunks.length}조각</span>`));
+      toast(`${file.name} — ${chunks.length}개 조각을 봉인해 보냈습니다`, { icon: ico('check') });
+    } catch (e) {
+      setBar(100);
+      barEl.style.background = 'var(--coral)';
+      rowEl.insertAdjacentHTML('beforeend', String(html`<span class="chip chip-bad">${e.message}</span>`));
+    }
+  }
+  draw(root);
+}
+
+/* ---------- main view ---------- */
 function draw(root, keepFocus = false) {
   const q = query.trim().toLowerCase();
   const terms = GLOSSARY.filter((g) => !q
     || [g.term, ...g.aliases, g.general, g.lab].join(' ').toLowerCase().includes(q));
-  const docs = DOCS.filter((d) => !q
-    || `${d.title} ${d.excerpt} ${d.kind}`.toLowerCase().includes(q));
+  const docs = DOCS.filter((d) => !q || `${d.title} ${d.excerpt} ${d.kind}`.toLowerCase().includes(q));
+  const mine = state.ingested.filter((d) => !q || d.title.toLowerCase().includes(q));
 
-  root.innerHTML = html`
+  root.innerHTML = String(html`
     <div class="view">
       <div class="view-head">
-        <h1 class="h-view">지식베이스</h1>
-        <p class="sub-view">${state.lab?.name || DEMO_LAB.name} · 용어 ${GLOSSARY.length}개 · 문서 ${DOCS.length}개</p>
-      </div>
-
-      <div class="row" style="margin-bottom:var(--sp-4);gap:8px">
-        <div class="grow" style="position:relative">
-          <span style="position:absolute;left:13px;top:50%;transform:translateY(-50%);
-                       width:17px;height:17px;color:var(--mut)">${raw(ico('search'))}</span>
-          <input id="kbq" class="field" style="padding-left:38px" value="${esc(query)}"
-                 placeholder="${esc('용어, 문서, 내용 검색')}" autocomplete="off">
+        <div class="between">
+          <div>
+            <h1 class="h-view">지식베이스</h1>
+            <p class="sub-view">${state.lab?.name || DEMO_LAB.name} · 용어 ${GLOSSARY.length} ·
+              문서 ${DOCS.length + state.ingested.length}</p>
+          </div>
+          <button class="btn btn-primary" data-add>${raw(ico('plus'))} 문서 추가</button>
         </div>
-        <button class="btn btn-ghost" data-add title="문서 추가">${raw(ico('plus'))}</button>
       </div>
 
-      <div class="status" style="margin-bottom:var(--sp-4)">
-        ${raw(ico('server'))}
-        <span>이 목록은 <b>원내 노드에 암호화되어</b> 저장됩니다. 답변 품질은 여기 담긴 내용까지가 한계입니다.</span>
+      <div style="position:relative;margin-bottom:var(--s4)">
+        <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);
+                     width:15px;height:15px;color:var(--text-4)">${raw(ico('search'))}</span>
+        <input id="kbq" class="field" style="padding-left:32px" value="${esc(query)}"
+               placeholder="${esc('용어, 문서, 내용 검색')}" autocomplete="off">
       </div>
+
+      ${mine.length ? html`
+        <div class="sec-label">이 기기에서 보낸 문서</div>
+        <div class="card" style="margin-bottom:var(--s6)">
+          ${mine.map((d) => html`
+            <div class="kb-item">
+              <div class="between">
+                <div class="grow">
+                  <div class="t">${d.title}</div>
+                  <div class="g">${d.kind} · ${fmtSize(d.bytes)} · ${d.chunks}개 조각 ·
+                    봉인 ${fmtBytes(d.sizeBytes)}</div>
+                </div>
+                <div class="row" style="gap:6px">
+                  ${d.status === 'indexed'
+                    ? html`<span class="chip chip-ok">${raw(ico('check'))} 색인됨</span>`
+                    : html`<span class="chip chip-lock">${raw(ico('lock'))} 전송 중</span>`}
+                  <button class="btn btn-sm" data-peek-doc="${d.docId}">${raw(ico('eye'))}</button>
+                </div>
+              </div>
+            </div>`)}
+        </div>` : ''}
 
       ${terms.length ? html`
-        <div class="label" style="margin:var(--sp-5) 0 10px">랩 용어</div>
-        <div class="card">
+        <div class="sec-label">랩 용어</div>
+        <div class="card" style="margin-bottom:var(--s6)">
           ${terms.map((g) => html`
             <div class="kb-item">
               <div class="t">${g.term}</div>
@@ -62,35 +168,34 @@ function draw(root, keepFocus = false) {
               <div class="l">${g.lab}</div>
               <div class="kb-tags">
                 ${(g.tags || []).map((t) => html`<span class="chip">${t}</span>`)}
-                <span class="chip chip-accent">${raw(ico('doc'))} 근거 ${g.docs.length}건</span>
+                <span class="chip chip-accent">${raw(ico('doc'))} 근거 ${g.docs.length}</span>
               </div>
             </div>`)}
         </div>` : ''}
 
       ${docs.length ? html`
-        <div class="label" style="margin:var(--sp-5) 0 10px">문서</div>
+        <div class="sec-label">랩 문서</div>
         <div class="card">
           ${docs.map((d) => html`
             <div class="kb-item">
-              <div class="row" style="gap:9px;align-items:flex-start">
+              <div class="row" style="gap:8px;align-items:flex-start">
                 <span class="chip chip-accent">${d.kind}</span>
                 <div class="grow">
                   <div class="t">${d.title}</div>
                   <div class="g">${d.excerpt}</div>
-                  <div class="tiny mut mono" style="margin-top:7px">${d.updated} 갱신</div>
+                  <div class="tiny mut mono" style="margin-top:6px">${d.updated} 갱신</div>
                 </div>
               </div>
             </div>`)}
         </div>` : ''}
 
-      ${!terms.length && !docs.length ? html`
+      ${!terms.length && !docs.length && !mine.length ? html`
         <div class="card card-pad empty">
           ${raw(ico('search'))}
           <b>검색 결과가 없습니다</b>
-          이 랩의 지식베이스에 “${query}” 관련 항목이 없습니다.
-          없는 내용은 지어내지 않고 “근거 없음”으로 답합니다.
+          <span>“${query}” 관련 항목이 이 랩에 없습니다. 없는 내용은 지어내지 않고 “근거 없음”으로 답합니다.</span>
         </div>` : ''}
-    </div>`;
+    </div>`);
 
   if (keepFocus) {
     const el = root.querySelector('#kbq');

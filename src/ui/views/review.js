@@ -98,7 +98,7 @@ function draw(root, go) {
         </div>` : html`
 
         ${ready ? html`
-          <button class="btn btn-primary btn-block" data-ask-all style="margin-bottom:var(--sp-4)">
+          <button class="btn btn-primary btn-block" data-ask-all style="margin-bottom:var(--s4)">
             ${raw(ico('send'))} 키워드 입력된 ${ready}개 한번에 요청
           </button>` : ''}
 
@@ -106,7 +106,7 @@ function draw(root, go) {
           ${moments.map((m) => momentHTML(m))}
         </div>
 
-        <div class="status" style="margin-top:var(--sp-4)">
+        <div class="status" style="margin-top:var(--s4)">
           ${raw(ico('lock'))}
           <span>키워드와 메모는 <b>기기에서 봉인된 뒤</b> 전송됩니다. 릴레이는 내용을 열 수 없습니다.</span>
         </div>`}
@@ -131,7 +131,7 @@ function momentHTML(m) {
           <div class="between wrap">
             <span class="chip chip-ok">${raw(ico('check'))} ${m.keyword}</span>
             <div class="row">
-              ${job ? html`<button class="btn btn-sm btn-ghost" data-peek="${m.jobId}">
+              ${job ? html`<button class="btn btn-sm" data-peek="${m.jobId}">
                 ${raw(ico('eye'))} 릴레이가 본 것</button>` : ''}
               <button class="btn btn-sm" data-see-answer>설명 보기 ${raw(ico('chevron'))}</button>
             </div>
@@ -142,7 +142,7 @@ function momentHTML(m) {
           ${job ? html`
             <div class="row tiny mut" style="margin-top:9px;justify-content:space-between">
               <span>봉인 크기 ${fmtBytes(job.sizeBytes)}</span>
-              <button class="btn btn-sm btn-ghost" data-peek="${m.jobId}">
+              <button class="btn btn-sm" data-peek="${m.jobId}">
                 ${raw(ico('eye'))} 릴레이가 본 것</button>
             </div>` : ''}`
         : html`
