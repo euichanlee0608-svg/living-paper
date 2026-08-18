@@ -9,7 +9,6 @@
 import { state, bus, fmtTime } from '../../app.js';
 import { html, raw, scope, toast, copy, relTime } from '../dom.js';
 import { ico } from '../icons.js';
-import { relayPeek } from '../components/relaypeek.js';
 
 const S = scope();
 
@@ -18,7 +17,6 @@ export function render(root, go) {
   draw(root);
   for (const ev of ['answer', 'job']) S.listen(bus, ev, () => draw(root));
 
-  S.on(root, 'click', '[data-peek]', (e, el) => relayPeek(el.dataset.peek));
   S.on(root, 'click', '[data-copy]', (e, el) => {
     const a = state.answers.get(el.dataset.copy);
     if (!a) return;
@@ -87,7 +85,6 @@ function answerHTML(jobId, a, job) {
           ${a.grounded
             ? html`<span class="chip chip-ok">${raw(ico('check'))} 랩 문서 근거 있음</span>`
             : html`<span class="chip chip-warn">${raw(ico('alert'))} 랩 근거 없음</span>`}
-          <span class="chip chip-lock">${raw(ico('lock'))} 원내 처리</span>
           ${a.simulated ? html`<span class="chip">데모 · 모의 응답</span>` : ''}
         </div>
       </div>
@@ -137,14 +134,8 @@ function answerHTML(jobId, a, job) {
           </div>` : ''}
 
         <div class="divider"></div>
-        <div class="between wrap" style="gap:8px">
-          <div class="tiny mut mono">
-            ${a.meta?.model || 'local'} · ${a.meta?.tokensIn || 0}→${a.meta?.tokensOut || 0} tok · ${a.meta?.ms || 0}ms
-          </div>
-          <div class="row" style="gap:7px">
-            <button class="btn btn-sm" data-copy="${jobId}">${raw(ico('copy'))} 복사</button>
-            <button class="btn btn-sm" data-peek="${jobId}">${raw(ico('eye'))} 릴레이가 본 것</button>
-          </div>
+        <div style="display:flex;justify-content:flex-end">
+          <button class="btn btn-sm" data-copy="${jobId}">${raw(ico('copy'))} 복사</button>
         </div>
       </div>
     </div>`;

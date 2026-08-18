@@ -1,28 +1,30 @@
-/* 설정 — where the demo becomes a deployment.
+/* 설정 — members first, then appearance, then the plumbing.
  *
- * Two switches live here: which relay this device talks to, and who else
- * is in the lab. Both are the moments where the architecture stops being
- * a diagram, so both show their consequences plainly — including that
- * connecting to a real relay hands it your metadata, and that inviting
- * someone hands them the lab key.
+ * Ordered by how often a user actually needs each thing: inviting a
+ * teammate is common, switching relays is rare, and auditing keys is a
+ * once-per-deployment event — so security lives behind one quiet row
+ * that opens the full detail page (#/security) for those who want it.
  */
 import {
   state, bus, testRelay, setRelay, useDemoMode,
   createInvite, inviteToText, parseInvite, grantLabKey,
 } from '../../app.js';
 import { generateIdentity } from '../../crypto/keys.js';
-import { fingerprint } from '../../crypto/fingerprint.js';
 import { qrSVG } from '../components/qr.js';
 import { html, raw, scope, esc, toast, copy, openSheet, closeSheet, relTime } from '../dom.js';
 import { ico } from '../icons.js';
 
 const S = scope();
+let nav = () => {};
 
-export function render(root) {
+export function render(root, go) {
   S.clear();
+  nav = go || nav;
   draw(root);
   S.listen(bus, 'connection', () => draw(root));
   S.listen(bus, 'members', () => draw(root));
+
+  S.on(root, 'click', '[data-security]', () => nav('security'));
 
   S.on(root, 'click', '[data-test]', async () => {
     const url = root.querySelector('#relay-url')?.value.trim();
@@ -76,24 +78,19 @@ async function openInvite(root) {
 
   const body = openSheet('멤버 초대', html`
     <div class="stack">
-      <div class="notice notice-lock">${raw(ico('lock'))}
-        <span>이 코드에는 <b>랩 키가 들어있지 않습니다.</b> 어느 랩·어느 릴레이인지와
-        제 키 지문만 담깁니다. 랩 키는 상대의 공개키가 도착한 뒤에야 그 키로 감싸서 전달됩니다.</span></div>
+      <p class="tiny" style="color:var(--text-3);line-height:1.7;margin:0">
+        팀원에게 이 QR을 보여주세요. 스캔하면 바로 우리 랩에 참여합니다.
+        초대는 <b style="color:var(--text)">24시간</b> 동안 유효합니다.
+      </p>
 
       <div class="qr-wrap">${raw(qrSVG(text))}</div>
 
-      <div>
-        <div class="sec-label">초대 코드</div>
-        <div class="ct-view" style="max-height:110px">${text}</div>
-      </div>
-
       <div class="row" style="gap:6px">
-        <button class="btn grow" data-copy-invite>${raw(ico('copy'))} 코드 복사</button>
+        <button class="btn grow" data-copy-invite>${raw(ico('copy'))} 링크로 공유</button>
         <button class="btn btn-primary grow" data-sim-join>${raw(ico('users'))} 참여 시연</button>
       </div>
-      <p class="tiny mut">
-        “참여 시연”은 두 번째 기기가 이 QR을 스캔한 상황을 이 탭 안에서 재현합니다 —
-        새 신원을 만들고, 지문을 확인하고, 랩 키를 감싸 전달하는 전 과정이 실제 암호로 실행됩니다.
+      <p class="tiny mut" style="margin:0">
+        “참여 시연”은 팀원이 이 QR을 스캔했을 때의 과정을 이 자리에서 미리 보여줍니다.
       </p>
       <div id="join-out"></div>
     </div>`);
@@ -110,15 +107,13 @@ async function openInvite(root) {
     };
     try {
       const parsed = parseInvite(text);
-      step(`초대 확인 — ${parsed.labName} · 초대자 지문 ${parsed.fp}`);
+      step(`초대 확인 — ${parsed.labName}`);
 
       const joiner = await generateIdentity();
-      const jfp = await fingerprint(joiner.pub);
-      step(`새 기기 신원 생성 — ${jfp.short}`);
+      step('팀원 기기를 등록했습니다');
 
       await grantLabKey(joiner.pub);
-      step('랩 키를 상대 공개키로 감싸 릴레이에 전달했습니다');
-      step('상대 기기만 이 봉투를 열 수 있습니다 — 릴레이는 불가');
+      step('랩 접근 권한을 안전하게 전달했습니다');
       toast('멤버를 추가했습니다', { icon: ico('check') });
       draw(root);
     } catch (err) {
@@ -136,13 +131,47 @@ function draw(root) {
     <div class="view">
       <div class="view-head">
         <h1 class="h-view">설정</h1>
-        <p class="sub-view">연결 대상과 랩 구성원</p>
+        <p class="sub-view">랩 구성원 · 화면 · 연결</p>
       </div>
 
-      <!-- mode -->
+      <!-- members: the thing people actually come here for -->
       <div class="card card-pad" style="margin-bottom:var(--s4)">
         <div class="between" style="margin-bottom:var(--s4)">
-          <div class="sec-label" style="margin:0">동작 모드</div>
+          <div class="sec-label" style="margin:0">랩 구성원</div>
+          <span class="tiny mut">${state.members.length + 1}명</span>
+        </div>
+
+        <div class="status" style="margin-bottom:var(--s3)">
+          <span class="led"></span>
+          <span><b>이 기기</b> · 관리자</span>
+        </div>
+        ${state.members.map((m) => html`
+          <div class="status" style="margin-bottom:var(--s3)">
+            <span class="led"></span>
+            <span><b>멤버</b> · ${relTime(m.at)} 참여</span>
+          </div>`)}
+
+        <button class="btn btn-primary btn-block" data-invite style="margin-top:var(--s2)">
+          ${raw(ico('users'))} QR로 초대하기
+        </button>
+      </div>
+
+      <!-- appearance -->
+      <div class="card card-pad" style="margin-bottom:var(--s4)">
+        <div class="sec-label">화면</div>
+        <div class="row" style="gap:6px">
+          <button class="btn grow ${theme === 'dark' ? 'btn-primary' : ''}" data-theme="dark">어두운 화면</button>
+          <button class="btn grow ${theme === 'light' ? 'btn-primary' : ''}" data-theme="light">밝은 화면</button>
+        </div>
+        <p class="tiny mut" style="margin-top:var(--s3)">
+          기본값은 어두운 화면입니다 — 미팅은 대개 조명을 낮춘 방에서 열립니다.
+        </p>
+      </div>
+
+      <!-- connection -->
+      <div class="card card-pad" style="margin-bottom:var(--s4)">
+        <div class="between" style="margin-bottom:var(--s4)">
+          <div class="sec-label" style="margin:0">연결</div>
           ${connected
             ? html`<span class="chip chip-ok">${raw(ico('cloud'))} 실서버</span>`
             : html`<span class="chip chip-accent">${raw(ico('server'))} 데모</span>`}
@@ -152,7 +181,7 @@ function draw(root) {
           <span class="led ${connected ? 'live' : ''}"></span>
           <span>${connected
             ? html`릴레이 <b>${state.relayCfg?.url || ''}</b> 에 연결됨`
-            : html`릴레이와 원내 노드가 <b>이 탭 안에서</b> 시뮬레이션 중 — 네트워크 전송 없음`}</span>
+            : html`데모 모드 — 모든 것이 <b>이 브라우저 안에서</b> 실행됩니다`}</span>
         </div>
 
         ${connected ? html`
@@ -175,44 +204,20 @@ function draw(root) {
                 ${raw(ico('arrowRight'))} 전환</button>
             </div>
             <div id="relay-out" class="tiny mut"></div>
-            <div class="notice">${raw(ico('alert'))}
-              <span>전환하면 이 기기의 요청이 실제 릴레이를 거칩니다. 릴레이는 내용을 볼 수 없지만
-              <b>누가 언제 몇 바이트를 보냈는지</b>는 기록됩니다.</span></div>
           </div>`}
       </div>
 
-      <!-- members -->
-      <div class="card card-pad" style="margin-bottom:var(--s4)">
-        <div class="between" style="margin-bottom:var(--s4)">
-          <div class="sec-label" style="margin:0">랩 구성원</div>
-          <span class="tiny mut">${state.members.length + 1}명</span>
-        </div>
-
-        <div class="status" style="margin-bottom:var(--s3)">
-          <span class="led"></span>
-          <span><b>이 기기</b> · ${state.identity?.fingerprint?.short || ''} · 관리자</span>
-        </div>
-        ${state.members.map((m) => html`
-          <div class="status" style="margin-bottom:var(--s3)">
-            <span class="led"></span>
-            <span><b>${m.fp.short}</b> · 랩 키 전달됨 · ${relTime(m.at)}</span>
-          </div>`)}
-
-        <button class="btn btn-primary btn-block" data-invite style="margin-top:var(--s2)">
-          ${raw(ico('users'))} QR로 초대하기
-        </button>
-      </div>
-
-      <!-- appearance -->
+      <!-- privacy & security: one quiet row, full detail one tap away -->
       <div class="card card-pad">
-        <div class="sec-label">화면</div>
-        <div class="row" style="gap:6px">
-          <button class="btn grow ${theme === 'dark' ? 'btn-primary' : ''}" data-theme="dark">어두운 화면</button>
-          <button class="btn grow ${theme === 'light' ? 'btn-primary' : ''}" data-theme="light">밝은 화면</button>
+        <div class="between">
+          <div class="grow">
+            <div style="font-weight:var(--w-strong);color:var(--text);font-size:14px">개인정보 · 보안</div>
+            <div class="tiny mut" style="margin-top:3px">
+              키 확인 · 복구 키트 · 데이터 삭제 · 통신 기록
+            </div>
+          </div>
+          <button class="btn btn-sm" data-security>자세히 ${raw(ico('chevron'))}</button>
         </div>
-        <p class="tiny mut" style="margin-top:var(--s3)">
-          기본값은 어두운 화면입니다 — 미팅은 대개 조명을 낮춘 방에서 열립니다.
-        </p>
       </div>
     </div>`);
 }

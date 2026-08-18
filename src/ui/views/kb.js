@@ -4,12 +4,11 @@
  * the model is allowed to know — and lets you add to it. Parsing and
  * chunking happen on this device; only sealed chunks reach the node.
  */
-import { state, bus, ingestDocument, fmtBytes } from '../../app.js';
+import { state, bus, ingestDocument } from '../../app.js';
 import { GLOSSARY, DOCS, DEMO_LAB } from '../../data/seed.js';
 import { extractText, chunkText, guessKind, fmtSize, SUPPORTED } from '../../data/ingest.js';
 import { html, raw, scope, esc, toast, openSheet } from '../dom.js';
 import { ico } from '../icons.js';
-import { relayPeek } from '../components/relaypeek.js';
 
 let query = '';
 const S = scope();
@@ -21,10 +20,6 @@ export function render(root) {
 
   S.on(root, 'input', '#kbq', (e, el) => { query = el.value; draw(root, true); });
   S.on(root, 'click', '[data-add]', () => openIngest(root));
-  S.on(root, 'click', '[data-peek-doc]', (e, el) => {
-    const doc = state.ingested.find((d) => d.docId === el.dataset.peekDoc);
-    if (doc) relayPeek(null, { relaySees: doc.relaySees, sizeBytes: doc.sizeBytes, label: doc.title });
-  });
 }
 
 export function teardown() { S.clear(); }
@@ -33,9 +28,10 @@ export function teardown() { S.clear(); }
 function openIngest(root) {
   const body = openSheet('문서 추가', html`
     <div class="stack">
-      <div class="notice notice-lock">${raw(ico('lock'))}
-        <span>파일은 <b>이 기기에서 열리고 잘립니다.</b> 원문은 어디에도 올라가지 않고,
-        조각들만 봉인되어 원내 노드로 갑니다.</span></div>
+      <p class="tiny" style="color:var(--text-3);line-height:1.7;margin:0">
+        랩 SOP, 실험노트, 프로토콜을 추가할수록 설명이 <b style="color:var(--text)">우리 랩 기준으로</b>
+        정확해집니다. 추가한 문서는 바로 근거로 인용됩니다.
+      </p>
 
       <label class="drop" id="drop">
         ${raw(ico('doc'))}
@@ -45,6 +41,8 @@ function openIngest(root) {
       </label>
 
       <div id="stage"></div>
+
+      <p class="tiny mut" style="margin:0">문서는 우리 랩 밖으로 나가지 않습니다.</p>
     </div>`);
 
   const drop = body.querySelector('#drop');
@@ -98,8 +96,8 @@ async function handle(files, stage, root) {
       });
       setBar(100);
       rowEl.insertAdjacentHTML('beforeend', String(html`
-        <span class="chip chip-ok">${raw(ico('check'))} ${chunks.length}조각</span>`));
-      toast(`${file.name} — ${chunks.length}개 조각을 봉인해 보냈습니다`, { icon: ico('check') });
+        <span class="chip chip-ok">${raw(ico('check'))} 추가됨</span>`));
+      toast(`${file.name} 을(를) 지식베이스에 추가했습니다`, { icon: ico('check') });
     } catch (e) {
       setBar(100);
       barEl.style.background = 'var(--coral)';
@@ -138,22 +136,18 @@ function draw(root, keepFocus = false) {
       </div>
 
       ${mine.length ? html`
-        <div class="sec-label">이 기기에서 보낸 문서</div>
+        <div class="sec-label">내가 추가한 문서</div>
         <div class="card" style="margin-bottom:var(--s6)">
           ${mine.map((d) => html`
             <div class="kb-item">
               <div class="between">
                 <div class="grow">
                   <div class="t">${d.title}</div>
-                  <div class="g">${d.kind} · ${fmtSize(d.bytes)} · ${d.chunks}개 조각 ·
-                    봉인 ${fmtBytes(d.sizeBytes)}</div>
+                  <div class="g">${d.kind} · ${fmtSize(d.bytes)}</div>
                 </div>
-                <div class="row" style="gap:6px">
-                  ${d.status === 'indexed'
-                    ? html`<span class="chip chip-ok">${raw(ico('check'))} 색인됨</span>`
-                    : html`<span class="chip chip-lock">${raw(ico('lock'))} 전송 중</span>`}
-                  <button class="btn btn-sm" data-peek-doc="${d.docId}">${raw(ico('eye'))}</button>
-                </div>
+                ${d.status === 'indexed'
+                  ? html`<span class="chip chip-ok">${raw(ico('check'))} 검색 가능</span>`
+                  : html`<span class="chip">${raw(ico('refresh'))} 추가 중</span>`}
               </div>
             </div>`)}
         </div>` : ''}

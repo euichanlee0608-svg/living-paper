@@ -1,22 +1,29 @@
-/* 보안 — the screen the buyer actually reads.
+/* 개인정보 · 보안 — the detail page behind 설정.
  *
- * Everything here is live state, not marketing copy: the fingerprints are
- * computed from the real keys in this browser, and the relay log is the
- * actual audit trail of what the relay stored this session. If the
- * architecture were lying, this screen is where it would show.
+ * Not a tab anymore: day-to-day use never needs this screen, so it stays
+ * out of the way. But everything on it is live state, not marketing copy —
+ * fingerprints computed from the real keys in this browser, and the relay
+ * log is the actual audit trail of what the relay stored this session.
+ * A hospital IT reviewer can still verify every claim here.
  */
 import { state, verifyNode, resetEverything, reissueRecovery, fmtBytes, bus } from '../../app.js';
 import { safetyNumber } from '../../crypto/fingerprint.js';
 import { html, raw, scope, toast, copy, openSheet, closeSheet } from '../dom.js';
 import { ico } from '../icons.js';
+import { relayPeek } from '../components/relaypeek.js';
 
 const S = scope();
+let nav = () => {};
 
-export function render(root) {
+export function render(root, go) {
   S.clear();
+  nav = go || nav;
   draw(root);
   S.listen(window, 'lp:relay-log', () => draw(root));
   S.listen(bus, 'connection', () => draw(root));
+
+  S.on(root, 'click', '[data-back]', () => nav('settings'));
+  S.on(root, 'click', '[data-peek]', (e, el) => relayPeek(el.dataset.peek));
 
   S.on(root, 'click', '[data-verify]', async () => {
     const sn = await safetyNumber(state.identity.pub, state.node.pub);
@@ -88,11 +95,17 @@ function draw(root) {
   const me = state.identity;
   const node = state.node;
   const log = state.relay?.log || [];
+  const lastJob = [...state.jobs.values()]
+    .filter((j) => j.relaySees)
+    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0];
 
   root.innerHTML = html`
     <div class="view">
+      <button class="btn btn-quiet btn-sm" data-back
+              style="margin-bottom:var(--s3);margin-left:-6px">
+        <span style="display:inline-flex;transform:rotate(180deg)">${raw(ico('chevron'))}</span> 설정</button>
       <div class="view-head">
-        <h1 class="h-view">보안</h1>
+        <h1 class="h-view">개인정보 · 보안</h1>
         <p class="sub-view">지금 이 브라우저의 실제 키와 실제 통신 기록입니다.</p>
       </div>
 
@@ -189,6 +202,10 @@ function draw(root) {
                   : JSON.stringify(l.detail).slice(0, 90)}</span>
               </div>`)}
           </div>` : html`<p class="tiny mut">아직 기록이 없습니다.</p>`}
+        ${lastJob ? html`
+          <button class="btn btn-block" data-peek="${lastJob.jobId}" style="margin-top:var(--s4)">
+            ${raw(ico('eye'))} 릴레이가 본 것 직접 열어보기
+          </button>` : ''}
       </div>
 
       <!-- recovery + wipe -->

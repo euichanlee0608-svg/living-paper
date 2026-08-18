@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Living Paper — 연구자를 위한 미팅 어시스턴트</title>
-<meta name="description" content="미팅에서 이해한 척 넘긴 순간을, 우리 랩의 맥락으로 설명해 주는 어시스턴트. AI 연산은 원내에서, 클라우드는 암호문 전달만 합니다.">
+<meta name="description" content="미팅에서 이해한 척 넘긴 순간을, 우리 랩의 맥락으로 설명해 주는 어시스턴트. 회의 중엔 버튼 하나, 정리는 끝난 뒤에 — 답은 랩 문서를 근거로.">
 <meta property="og:title" content="Living Paper — 연구자를 위한 미팅 어시스턴트">
-<meta property="og:description" content="가짜 이해(Fake Ah-Moment)를 끝내는 방법. 원내 처리 · 제로널리지 릴레이 · 랩 맥락 기반 설명.">
+<meta property="og:description" content="가짜 이해(Fake Ah-Moment)를 끝내는 방법. 버튼 한 번으로 표시하고, 회의가 끝나면 우리 랩 맥락으로 설명받으세요.">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ko_KR">
 <meta name="theme-color" content="#08090A">
@@ -151,29 +151,30 @@
   </nav>
 
   <header class="hero">
-    <span class="badge">원내 LLM 처리 · 클라우드는 암호문 전달만</span>
+    <span class="badge">회의 중엔 버튼 하나 · 정리는 끝난 뒤에</span>
     <h1>미팅에서 <em>이해한 척</em>한 순간,<br>끝나고 우리 랩 맥락으로 메웁니다</h1>
     <p>모르는 용어가 나와도 분위기상 고개를 끄덕이게 됩니다. Living Paper는 그 순간을
-    버튼 하나로 표시해 두었다가, 미팅이 끝나면 <b>우리 연구실의 문서와 규약을 근거로</b> 설명해 줍니다.</p>
+    버튼 하나로 표시해 두었다가, 미팅이 끝나면 <b>우리 연구실의 문서와 규약을 근거로</b> 설명해 줍니다.
+    회의 흐름은 끊기지 않고, 답은 우리 랩의 기준으로 정확합니다.</p>
     <div class="actions">
       <a class="go" href="app.html">지금 데모 써보기 →</a>
-      <a class="alt" href="#architecture">보안 구조 보기</a>
+      <a class="alt" href="#how">작동 방식 보기</a>
     </div>
-    <p class="fine">설치 없음 · 계정 없음 · 데모의 모든 연산이 이 브라우저 안에서 실행되며 외부로 나가는 요청이 0건입니다</p>
+    <p class="fine">설치 없음 · 계정 없음 · 예시 랩미팅이 준비되어 있어 1분이면 전체 흐름을 볼 수 있습니다</p>
 
     <div class="strip">
-      <div class="s"><div class="v">50회</div><div class="k">심층 인터뷰로 검증한 문제</div></div>
-      <div class="s"><div class="v"><b>95%</b></div><div class="k">온프레미스 보안 요구</div></div>
-      <div class="s"><div class="v"><b>88%</b></div><div class="k">도메인 특화 정확도 요구</div></div>
+      <div class="s"><div class="v"><b>1탭</b></div><div class="k">회의 중 필요한 조작의 전부</div></div>
+      <div class="s"><div class="v"><b>88%</b></div><div class="k">도메인 특화 정확도 요구 — 그래서 랩 맥락 기반</div></div>
       <div class="s"><div class="v">30%</div><div class="k">실시간 요약 선호 — 그래서 사후 정리</div></div>
+      <div class="s"><div class="v">50회</div><div class="k">심층 인터뷰로 검증한 문제</div></div>
     </div>
   </header>
 
-  <section>
+  <section id="how">
     <div class="sec-k">How it works</div>
     <h2 class="sec-h">회의 중에는 버튼 하나,<br>정리는 회의가 끝난 뒤에</h2>
-    <p class="sec-p">인터뷰에서 확인한 사실: 연구자들은 회의 중에 방해받는 것보다, 끝난 뒤 보안이
-    유지된 상태에서 정확한 답을 얻는 쪽을 선호합니다. 그래서 흐름 전체를 사후(post-hoc)로 설계했습니다.</p>
+    <p class="sec-p">인터뷰에서 확인한 사실: 연구자들은 회의 중에 방해받는 것을 가장 싫어합니다.
+    그래서 흐름 전체를 사후(post-hoc)로 설계했습니다 — 회의 중에는 아무것도 읽거나 입력할 필요가 없습니다.</p>
     <div class="steps">
       <div class="step"><span class="n">01</span>
         <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.5v7"/><path d="M9 6.5v5"/><path d="M15 7.5v4"/><path d="M6 10v3.5a6 6 0 0 0 6 6h.6a6 6 0 0 0 5.4-5.97V10"/></svg></span>
@@ -186,82 +187,71 @@
         <p>미팅 후, 표시해 둔 지점마다 못 알아들은 용어를 답니다. 랩 용어집이 추천을 띄워 대부분 두 번의 탭이면 됩니다.</p>
       </div>
       <div class="step"><span class="n">03</span>
-        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2.2"/><path d="M8 10.5V7.8a4 4 0 0 1 8 0v2.7"/></svg></span>
-        <h3>기기에서 봉인 후 전송</h3>
-        <p>키워드와 메모는 브라우저 안에서 암호화됩니다. 클라우드 릴레이는 열 수 없는 봉투를 원내로 전달만 합니다.</p>
-      </div>
-      <div class="step"><span class="n">04</span>
         <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 13.6 8 18 9.6 13.6 11.2 12 15.7 10.4 11.2 6 9.6 10.4 8z"/></svg></span>
         <h3>우리 랩 맥락으로 설명</h3>
-        <p>원내 노드의 로컬 LLM이 랩 SOP·실험노트·규약을 검색해, “우리 랩에서는 왜 그렇게 하는지”까지 근거와 함께 답합니다.</p>
+        <p>랩 SOP·실험노트·규약을 검색해, “우리 랩에서는 왜 그렇게 하는지”까지 근거 문서 인용과 함께 답합니다.</p>
       </div>
-    </div>
-  </section>
-
-  <section id="architecture">
-    <div class="sec-k">Architecture</div>
-    <h2 class="sec-h">클라우드가 뚫려도<br>연구 데이터는 읽히지 않는 구조</h2>
-    <p class="sec-p">병원과 협력하는 랩은 데이터를 외부 클라우드 AI에 넣을 수 없습니다.
-    그래서 역할을 갈랐습니다 — <b>암호화와 AI 연산은 전부 경계 안에서</b>, 클라우드는 인증과 암호문 중계만.</p>
-
-    <div class="arch">
-      <div class="arch-grid">
-        <div class="zone z-dev">
-          <div class="zt">내 기기 · 브라우저</div>
-          <h4><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="6.5" y="2.8" width="11" height="18.4" rx="2.4"/><path d="M10.6 18.4h2.8"/></svg>봉인하는 곳</h4>
-          <ul>
-            <li>P-256 기기 키 — <b>반출 불가</b>로 생성</li>
-            <li>AES-256-GCM 종단 봉인</li>
-            <li>수신자별 키 래핑 (ECDH-ES)</li>
-            <li>ECDSA 서명으로 위조 차단</li>
-          </ul>
-        </div>
-        <div class="pipe-a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2.2"/><path d="M8 10.5V7.8a4 4 0 0 1 8 0v2.7"/></svg>암호문</div>
-        <div class="zone z-cloud">
-          <div class="zt">클라우드 · 신뢰하지 않음</div>
-          <h4><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7.2 18.5A4.2 4.2 0 0 1 7 10.1a5.6 5.6 0 0 1 10.8-1.3A3.9 3.9 0 0 1 17.6 18.5z"/></svg>전달만 하는 곳</h4>
-          <ul>
-            <li>인증 · 기기 디렉터리 · 큐잉</li>
-            <li>보는 것: 라우팅 메타데이터뿐</li>
-            <li>복호화 키 <b>없음</b> — 유출돼도 암호문</li>
-            <li>키 바꿔치기는 대면 지문 확인으로 탐지</li>
-          </ul>
-        </div>
-        <div class="pipe-a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2.2"/><path d="M8 10.5V7.8a4 4 0 0 1 8 0v2.7"/></svg>암호문</div>
-        <div class="zone z-lab">
-          <div class="zt">원내 · 연구실 인프라</div>
-          <h4><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="6" rx="1.8"/><rect x="3.5" y="13.5" width="17" height="6" rx="1.8"/><path d="M7 7.5h.01M7 16.5h.01"/></svg>연산하는 곳</h4>
-          <ul>
-            <li>복호화는 여기서만 일어남</li>
-            <li>로컬 LLM + 랩 지식베이스 RAG</li>
-            <li>지식베이스는 랩 키로 저장 시 암호화</li>
-            <li>답변도 봉인되어 같은 길로 회신</li>
-          </ul>
-        </div>
-      </div>
-      <div class="arch-note">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2 19 6v5.4c0 4.2-2.9 7.6-7 9.4-4.1-1.8-7-5.2-7-9.4V6z"/><path d="M9.3 12.2l1.9 1.9 3.6-3.7"/></svg>
-        <span>앱의 <b>보안 탭</b>에서 이 구조를 직접 검증할 수 있습니다 — 릴레이가 저장한 실제 바이트를 열어,
-        방금 입력한 단어를 그 안에서 검색해 보세요. 0건이 나와야 정상이고, 실제로 0건이 나옵니다.</span>
+      <div class="step"><span class="n">04</span>
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H10a2.5 2.5 0 0 1 2 1 2.5 2.5 0 0 1 2-1h4.5A1.5 1.5 0 0 1 20 5.5v11a1.5 1.5 0 0 1-1.5 1.5H14a2.5 2.5 0 0 0-2 1 2.5 2.5 0 0 0-2-1H5.5A1.5 1.5 0 0 1 4 16.5z"/><path d="M12 5v14"/></svg></span>
+        <h3>쓸수록 똑똑해지는 지식베이스</h3>
+        <p>문서를 끌어다 놓으면 다음 설명부터 바로 근거로 쓰입니다. 랩 용어집이 키워드 추천도 함께 채워줍니다.</p>
       </div>
     </div>
   </section>
 
   <section>
     <div class="sec-k">Why not just ChatGPT?</div>
-    <h2 class="sec-h">범용 AI가 못 하는 두 가지</h2>
+    <h2 class="sec-h">범용 AI가 못 하는 것 —<br>우리 랩의 맥락</h2>
     <div class="duo">
       <div class="panel">
-        <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H10a2.5 2.5 0 0 1 2 1 2.5 2.5 0 0 1 2-1h4.5A1.5 1.5 0 0 1 20 5.5v11a1.5 1.5 0 0 1-1.5 1.5H14a2.5 2.5 0 0 0-2 1 2.5 2.5 0 0 0-2-1H5.5A1.5 1.5 0 0 1 4 16.5z"/><path d="M12 5v14"/></svg>우리 랩의 맥락</h3>
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H10a2.5 2.5 0 0 1 2 1 2.5 2.5 0 0 1 2-1h4.5A1.5 1.5 0 0 1 20 5.5v11a1.5 1.5 0 0 1-1.5 1.5H14a2.5 2.5 0 0 0-2 1 2.5 2.5 0 0 0-2-1H5.5A1.5 1.5 0 0 1 4 16.5z"/><path d="M12 5v14"/></svg>사전이 아니라 우리 랩의 답</h3>
         <p>“PDMS 사전경화”의 사전적 정의는 어디서나 얻을 수 있습니다. 하지만 <b>우리 랩이 왜 65 °C로
         고정했는지</b>는 작년 3차 배치의 실패 기록을 읽은 모델만 답할 수 있습니다.</p>
         <div class="q">“단순 요약을 넘어, 우리 랩의 이전 회의와 문서 맥락을 고려한 맞춤형 Q&A” — 인터뷰에서 가장 많이 나온 요구</div>
       </div>
       <div class="panel">
-        <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2 19 6v5.4c0 4.2-2.9 7.6-7 9.4-4.1-1.8-7-5.2-7-9.4V6z"/><path d="M9.3 12.2l1.9 1.9 3.6-3.7"/></svg>병원급 보안</h3>
-        <p>병원 협력 과제의 실험 데이터는 <b>기관 밖으로 나갈 수 없습니다</b>. 외부 클라우드 AI에 붙여넣는 순간
-        규정 위반입니다. Living Paper는 애초에 평문이 경계를 넘지 않도록 설계됐습니다.</p>
-        <div class="q">“병원과 협력하는 바이오 엔지니어들이 데이터 보안 문제로 기존 클라우드 AI를 쓰지 못한다” — 50회 인터뷰의 핵심 인사이트</div>
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 3.5H7a1.6 1.6 0 0 0-1.6 1.6v13.8A1.6 1.6 0 0 0 7 20.5h10a1.6 1.6 0 0 0 1.6-1.6V8.6z"/><path d="M13.5 3.5V8.6h5.1"/><path d="M8.6 13h6.8M8.6 16.3h4.4"/></svg>추측이 아니라 근거 인용</h3>
+        <p>모든 설명에 <b>어느 문서의 어느 문장</b>이 근거인지 함께 붙습니다. 근거가 없으면
+        지어내지 않고 “근거 없음”이라고 답합니다 — 연구자가 추적할 수 없는 답은 쓰이지 않으니까요.</p>
+        <div class="q">“88%가 도메인 특화 정확도를 요구” — 50회 인터뷰에서 확인한 핵심 요구</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="architecture">
+    <div class="sec-k">Privacy, built in</div>
+    <h2 class="sec-h">보안은 화면이 아니라<br>기본값입니다</h2>
+    <p class="sec-p">병원과 협력하는 랩도 안심하고 쓸 수 있도록, AI 연산은 <b>연구실 안에서만</b> 실행되고
+    데이터는 랩 밖으로 나가지 않습니다. 사용자가 신경 쓸 일은 없습니다 — 잠금 화면도, 확인 절차도
+    흐름을 막지 않습니다. 구조가 궁금한 관리자를 위해 앱 설정에 상세 검증 페이지를 두었습니다.</p>
+    <div class="arch">
+      <div class="arch-grid">
+        <div class="zone z-dev">
+          <div class="zt">내 기기</div>
+          <h4><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="6.5" y="2.8" width="11" height="18.4" rx="2.4"/><path d="M10.6 18.4h2.8"/></svg>질문하는 곳</h4>
+          <ul>
+            <li>질문과 메모는 <b>내 기기에서 잠긴 채</b> 출발</li>
+            <li>녹음도, 원문 업로드도 없음</li>
+          </ul>
+        </div>
+        <div class="pipe-a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2.2"/><path d="M8 10.5V7.8a4 4 0 0 1 8 0v2.7"/></svg></div>
+        <div class="zone z-cloud">
+          <div class="zt">클라우드</div>
+          <h4><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7.2 18.5A4.2 4.2 0 0 1 7 10.1a5.6 5.6 0 0 1 10.8-1.3A3.9 3.9 0 0 1 17.6 18.5z"/></svg>전달만 하는 곳</h4>
+          <ul>
+            <li>내용을 <b>열 수 없는</b> 우편함 역할</li>
+            <li>유출·압수되어도 읽히지 않음</li>
+          </ul>
+        </div>
+        <div class="pipe-a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2.2"/><path d="M8 10.5V7.8a4 4 0 0 1 8 0v2.7"/></svg></div>
+        <div class="zone z-lab">
+          <div class="zt">우리 연구실</div>
+          <h4><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="6" rx="1.8"/><rect x="3.5" y="13.5" width="17" height="6" rx="1.8"/><path d="M7 7.5h.01M7 16.5h.01"/></svg>답하는 곳</h4>
+          <ul>
+            <li>AI가 랩 문서를 읽고 답하는 유일한 장소</li>
+            <li>답변도 같은 방식으로 안전하게 회신</li>
+          </ul>
+        </div>
       </div>
     </div>
   </section>

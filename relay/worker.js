@@ -13,7 +13,7 @@
  * Deploy:
  *   wrangler kv namespace create LP_KV
  *   wrangler deploy relay/worker.js
- * Then in the app: 보안 탭 → 릴레이 설정 → this worker's URL.
+ * Then in the app: 설정 탭 → 연결 → this worker's URL.
  *
  * KV layout:
  *   dev:<kid>            → public bundle JSON        (no TTL)

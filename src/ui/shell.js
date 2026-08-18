@@ -12,14 +12,19 @@ import * as kb from './views/kb.js';
 import * as security from './views/security.js';
 import * as settings from './views/settings.js';
 
+/* Five tabs, all of them about the user's own work. Security is real but
+ * it is not a destination — it lives as a detail page under 설정
+ * (#/security still routes there for the people who want to audit). */
 const TABS = [
   { id: 'capture',  label: '미팅',    icon: 'mic' },
   { id: 'review',   label: '정리',    icon: 'tag' },
   { id: 'answers',  label: '설명',    icon: 'sparkles' },
   { id: 'kb',       label: '지식',    icon: 'book' },
-  { id: 'security', label: '보안',    icon: 'shield' },
   { id: 'settings', label: '설정',    icon: 'server' },
 ];
+
+/* Not in the tab bar, but still routable. */
+const SUBPAGES = { security: { parent: 'settings', label: '개인정보 · 보안' } };
 
 const VIEWS = { capture, review, answers, kb, security, settings };
 let current = null;
@@ -63,7 +68,8 @@ function unreadAnswers() {
 }
 
 function paintNav() {
-  const active = routeId();
+  const id = routeId();
+  const active = SUBPAGES[id]?.parent || id;   // subpages highlight their parent tab
   const badge = { review: pendingCount(), answers: unreadAnswers() };
 
   const rail = qs('#rail-nav');
@@ -88,15 +94,16 @@ function paintNav() {
     el.onclick = () => go(el.dataset.go);
   }
 
+  // Quiet connection status: which mode we're in, without nagging about
+  // verification state on every screen — that detail lives in 설정.
   const conn = html`
-    <span class="led ${state.node?.verified ? '' : 'warn'}"></span>
-    <span>${state.mode === 'demo' ? '데모 노드' : '원내 노드'}
-      ${state.node?.verified ? '· 확인됨' : '· 미확인'}</span>`;
+    <span class="led ${state.mode === 'demo' ? '' : 'live'}"></span>
+    <span>${state.mode === 'demo' ? '데모 모드' : '랩 노드 연결됨'}</span>`;
   const c1 = qs('#conn'); if (c1) c1.innerHTML = conn;
   const c2 = qs('#conn-m');
   if (c2) {
-    c2.innerHTML = html`<span class="chip ${state.node?.verified ? 'chip-ok' : 'chip-warn'}">
-      ${raw(ico('server'))}${state.mode === 'demo' ? '데모' : '원내'}</span>`;
+    c2.innerHTML = html`<span class="chip">
+      ${raw(ico('server'))}${state.mode === 'demo' ? '데모' : '연결됨'}</span>`;
   }
 }
 
@@ -120,5 +127,6 @@ function route() {
   window.scrollTo({ top: 0 });
   VIEWS[id].render(outlet, go);
   paintNav();
-  document.title = `${TABS.find((t) => t.id === id)?.label || ''} · Living Paper`;
+  const label = TABS.find((t) => t.id === id)?.label || SUBPAGES[id]?.label || '';
+  document.title = `${label} · Living Paper`;
 }

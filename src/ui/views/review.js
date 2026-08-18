@@ -5,16 +5,24 @@
  * suggestions come from the lab's own glossary, so the common case is
  * two taps and no typing at all.
  */
-import { state, askAbout, updateMoment, loadMoments, fmtTime, fmtBytes, bus } from '../../app.js';
+import { state, askAbout, updateMoment, loadMoments, fmtTime, bus } from '../../app.js';
 import { GLOSSARY } from '../../data/seed.js';
 import { html, raw, scope, toast, esc } from '../dom.js';
 import { ico } from '../icons.js';
-import { relayPeek } from '../components/relaypeek.js';
 
+/* Progress in the user's language, not the pipeline's. The node reports
+ * six internal stages (decrypt, embed, retrieve, rerank, generate, seal);
+ * the user only needs to know which of three things is happening. */
 const STEPS = [
-  ['receive', '봉인 해제'], ['embed', '질의 임베딩'], ['retrieve', '랩 KB 검색'],
-  ['rerank', '근거 재정렬'], ['generate', '로컬 LLM 생성'], ['seal', '응답 재봉인'],
+  ['send',     '질문 보내는 중'],
+  ['retrieve', '랩 문서에서 근거 찾는 중'],
+  ['write',    '설명 작성 중'],
 ];
+const STAGE_TO_STEP = {
+  receive: 'send', embed: 'send',
+  retrieve: 'retrieve', rerank: 'retrieve',
+  generate: 'write', seal: 'write',
+};
 
 const S = scope();
 
@@ -56,7 +64,6 @@ export function render(root, go) {
     }
   });
 
-  S.on(root, 'click', '[data-peek]', (e, el) => relayPeek(el.dataset.peek));
   S.on(root, 'click', '[data-see-answer]', () => go('answers'));
 }
 
@@ -106,10 +113,9 @@ function draw(root, go) {
           ${moments.map((m) => momentHTML(m))}
         </div>
 
-        <div class="status" style="margin-top:var(--s4)">
-          ${raw(ico('lock'))}
-          <span>키워드와 메모는 <b>기기에서 봉인된 뒤</b> 전송됩니다. 릴레이는 내용을 열 수 없습니다.</span>
-        </div>`}
+        <p class="tiny mut" style="margin-top:var(--s4);text-align:center">
+          질문과 메모는 우리 랩 안에서만 처리됩니다.
+        </p>`}
     </div>`;
 
   root.scrollTop = scrollTop;
@@ -130,21 +136,11 @@ function momentHTML(m) {
         ${answered ? html`
           <div class="between wrap">
             <span class="chip chip-ok">${raw(ico('check'))} ${m.keyword}</span>
-            <div class="row">
-              ${job ? html`<button class="btn btn-sm" data-peek="${m.jobId}">
-                ${raw(ico('eye'))} 릴레이가 본 것</button>` : ''}
-              <button class="btn btn-sm" data-see-answer>설명 보기 ${raw(ico('chevron'))}</button>
-            </div>
+            <button class="btn btn-sm" data-see-answer>설명 보기 ${raw(ico('chevron'))}</button>
           </div>`
         : sending ? html`
-          <div class="chip chip-lock">${raw(ico('lock'))} ${m.keyword}</div>
-          ${pipelineHTML(job)}
-          ${job ? html`
-            <div class="row tiny mut" style="margin-top:9px;justify-content:space-between">
-              <span>봉인 크기 ${fmtBytes(job.sizeBytes)}</span>
-              <button class="btn btn-sm" data-peek="${m.jobId}">
-                ${raw(ico('eye'))} 릴레이가 본 것</button>
-            </div>` : ''}`
+          <div class="chip chip-accent">${raw(ico('sparkles'))} ${m.keyword}</div>
+          ${pipelineHTML(job)}`
         : html`
           <input class="field" data-kw="${m.id}" value="${esc(m.keyword || '')}"
                  placeholder="${esc('못 알아들은 용어나 개념')}" autocomplete="off" enterkeyhint="done">
@@ -163,7 +159,8 @@ function momentHTML(m) {
 
 function pipelineHTML(job) {
   if (!job) return '';
-  const at = STEPS.findIndex(([id]) => id === job.stage);
+  const step = STAGE_TO_STEP[job.stage] || 'send';
+  const at = STEPS.findIndex(([id]) => id === step);
   return html`
     <div class="pipe">
       ${STEPS.map(([id, label], i) => {
@@ -172,7 +169,6 @@ function pipelineHTML(job) {
         return html`<div class="pipe-step ${done ? 'done' : active ? 'active' : ''}">
           <span class="ic"></span><span>${label}</span></div>`;
       })}
-      <div class="tiny mut" style="margin-top:5px">모든 단계가 원내 노드에서 실행됩니다.</div>
     </div>`;
 }
 
