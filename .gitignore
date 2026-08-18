@@ -1,0 +1,5 @@
+node-state/
+__pycache__/
+*.pyc
+.DS_Store
+.claude/

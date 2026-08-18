@@ -1,0 +1,208 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Living Paper — crypto test suite</title>
+<style>
+  body{font:14px/1.6 ui-monospace,Menlo,Consolas,monospace;background:#0B1220;color:#CBD5E1;padding:24px;margin:0}
+  h1{font-size:16px;color:#F1F5F9;margin:0 0 16px}
+  .t{padding:4px 0;border-bottom:1px solid #1E293B}
+  .ok::before{content:"PASS  ";color:#34D399}
+  .fail::before{content:"FAIL  ";color:#F87171}
+  .fail{color:#F87171}
+  .msg{color:#64748B;padding-left:48px}
+  #sum{margin-top:16px;font-size:15px;color:#F1F5F9}
+</style>
+<h1>Living Paper — crypto test suite</h1>
+<div id="out"></div>
+<div id="sum">running…</div>
+<script type="module">
+import { toB64u, fromB64u, canonicalJSON, timingSafeEqual } from '../src/crypto/base.js';
+import { generateIdentity, keyId } from '../src/crypto/keys.js';
+import { seal, open, relayView } from '../src/crypto/envelope.js';
+import {
+  createLabKey, wrapLabKeyFor, unwrapLabKey,
+  generateRecoveryCode, sealWithRecoveryCode, openWithRecoveryCode, normaliseRecoveryCode,
+} from '../src/crypto/labkey.js';
+import { fingerprint, safetyNumber } from '../src/crypto/fingerprint.js';
+
+const out = document.getElementById('out');
+let pass = 0, fail = 0;
+const results = [];
+
+async function t(name, fn) {
+  const row = document.createElement('div');
+  row.className = 't';
+  try {
+    await fn();
+    row.classList.add('ok'); row.textContent = name; pass++;
+    results.push({ name, ok: true });
+  } catch (e) {
+    row.classList.add('fail'); row.textContent = name; fail++;
+    const m = document.createElement('div');
+    m.className = 'msg'; m.textContent = e.message;
+    row.appendChild(m);
+    results.push({ name, ok: false, error: e.message });
+  }
+  out.appendChild(row);
+}
+
+const eq = (a, b, m) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(m || (JSON.stringify(a) + ' !== ' + JSON.stringify(b))); };
+const ok = (c, m) => { if (!c) throw new Error(m || 'expected truthy'); };
+async function throws(fn, m) {
+  try { await fn(); } catch { return; }
+  throw new Error(m || 'expected to throw, but resolved');
+}
+
+const aad = (over = {}) => ({ labId: 'lab_demo', jobId: 'job_1', type: 'explain-request', ts: 1700000000, ...over });
+
+await t('base: base64url round-trips arbitrary bytes', () => {
+  const b = crypto.getRandomValues(new Uint8Array(257));
+  eq([...fromB64u(toB64u(b))], [...b]);
+  ok(!/[+/=]/.test(toB64u(b)), 'must be URL-safe with no padding');
+});
+
+await t('base: canonical JSON is key-order independent', () => {
+  eq(canonicalJSON({ b: 1, a: { d: 2, c: [3, { f: 4, e: 5 }] } }),
+     canonicalJSON({ a: { c: [3, { e: 5, f: 4 }], d: 2 }, b: 1 }));
+});
+
+await t('base: timingSafeEqual behaves like equality', () => {
+  const a = new Uint8Array([1, 2, 3]);
+  ok(timingSafeEqual(a, new Uint8Array([1, 2, 3])));
+  ok(!timingSafeEqual(a, new Uint8Array([1, 2, 4])));
+  ok(!timingSafeEqual(a, new Uint8Array([1, 2])));
+});
+
+let alice, bob, node;
+await t('keys: identities generate with non-extractable private halves', async () => {
+  [alice, bob, node] = await Promise.all([generateIdentity(), generateIdentity(), generateIdentity()]);
+  ok(alice.kid !== bob.kid, 'kids must differ');
+  ok(alice.encPriv.extractable === false, 'ECDH private key must be non-extractable');
+  ok(alice.sigPriv.extractable === false, 'ECDSA private key must be non-extractable');
+  await throws(() => crypto.subtle.exportKey('jwk', alice.encPriv), 'exporting the private key must fail');
+});
+
+await t('keys: kid is derived deterministically from the public JWK', async () => {
+  const again = await keyId(await crypto.subtle.exportKey('jwk', alice.encPub));
+  eq(again, alice.kid);
+});
+
+await t('envelope: seals and opens for a single recipient', async () => {
+  const payload = { keyword: 'PDMS 몰드', note: '왜 그 온도인지 못 알아들음' };
+  const env = await seal(payload, { sender: alice, recipients: [node.pub], aad: aad() });
+  const got = await open(env, node, alice.pub);
+  eq(got, payload);
+});
+
+await t('envelope: multi-recipient — every listed device can open it', async () => {
+  const env = await seal({ x: 42 }, { sender: alice, recipients: [node.pub, alice.pub], aad: aad() });
+  eq((await open(env, node, alice.pub)).x, 42);
+  eq((await open(env, alice, alice.pub)).x, 42);
+});
+
+await t('envelope: a non-recipient cannot open it', async () => {
+  const env = await seal({ x: 1 }, { sender: alice, recipients: [node.pub], aad: aad() });
+  await throws(() => open(env, bob, alice.pub), 'bob is not a recipient and must be rejected');
+});
+
+await t('envelope: flipping a ciphertext bit fails the GCM tag', async () => {
+  const env = await seal({ secret: 'hospital data' }, { sender: alice, recipients: [node.pub], aad: aad() });
+  const ct = fromB64u(env.ct); ct[3] ^= 0x01;
+  await throws(() => open({ ...env, ct: toB64u(ct) }, node, alice.pub));
+});
+
+await t('envelope: rewriting routing metadata breaks decryption (AAD binding)', async () => {
+  const env = await seal({ x: 1 }, { sender: alice, recipients: [node.pub], aad: aad() });
+  const forged = { ...env, aad: { ...env.aad, labId: 'lab_attacker' } };
+  await throws(() => open(forged, node, alice.pub), 'a relay must not be able to re-route an envelope');
+});
+
+await t('envelope: dropping a recipient invalidates the signature', async () => {
+  const env = await seal({ x: 1 }, { sender: alice, recipients: [node.pub, alice.pub], aad: aad() });
+  const stripped = { ...env, recipients: env.recipients.filter((r) => r.kid === node.kid) };
+  await throws(() => open(stripped, node, alice.pub), 'recipient list must be authenticated');
+});
+
+await t('envelope: an impostor cannot pass off an envelope as another sender', async () => {
+  const env = await seal({ x: 1 }, { sender: bob, recipients: [node.pub], aad: aad() });
+  await throws(() => open({ ...env, sender: alice.kid }, node, alice.pub));
+});
+
+await t('envelope: unverified open still works when no sender key is supplied', async () => {
+  const env = await seal({ x: 7 }, { sender: alice, recipients: [node.pub], aad: aad() });
+  eq((await open(env, node)).x, 7);
+});
+
+await t('envelope: relay view exposes no plaintext', async () => {
+  const secret = 'PDMS-precure-65C';
+  const env = await seal({ note: secret }, { sender: alice, recipients: [node.pub], aad: aad() });
+  const seen = JSON.stringify(relayView(env));
+  ok(!seen.includes(secret), 'plaintext leaked into the relay view');
+  ok(!seen.includes('PDMS'), 'plaintext fragment leaked into the relay view');
+  ok(seen.includes('lab_demo'), 'routing metadata is expected to be visible');
+});
+
+await t('envelope: each seal uses a fresh content key and IV', async () => {
+  const a = await seal({ x: 1 }, { sender: alice, recipients: [node.pub], aad: aad() });
+  const b = await seal({ x: 1 }, { sender: alice, recipients: [node.pub], aad: aad() });
+  ok(a.iv !== b.iv, 'IV reuse would be catastrophic for AES-GCM');
+  ok(a.ct !== b.ct, 'identical plaintext must not produce identical ciphertext');
+  ok(a.recipients[0].epk.x !== b.recipients[0].epk.x, 'ephemeral key must not be reused');
+});
+
+await t('labkey: wraps to a member and unwraps on their device', async () => {
+  const lmk = createLabKey();
+  const env = await wrapLabKeyFor(lmk, bob.pub, alice, 'lab_demo');
+  const got = await unwrapLabKey(env, bob, alice.pub);
+  eq([...got], [...lmk]);
+});
+
+await t('labkey: a different device cannot unwrap the grant', async () => {
+  const lmk = createLabKey();
+  const env = await wrapLabKeyFor(lmk, bob.pub, alice, 'lab_demo');
+  await throws(() => unwrapLabKey(env, node, alice.pub));
+});
+
+await t('recovery: code round-trips the lab key', async () => {
+  const lmk = createLabKey();
+  const code = generateRecoveryCode();
+  ok(/^[0-9A-Z]{4}(-[0-9A-Z]{4}){7}$/.test(code), 'unexpected code shape: ' + code);
+  const blob = await sealWithRecoveryCode(lmk, code, 'lab_demo');
+  eq([...await openWithRecoveryCode(blob, code)], [...lmk]);
+});
+
+await t('recovery: transcription slips (l/1, O/0, spaces, case) still work', async () => {
+  const lmk = createLabKey();
+  const code = generateRecoveryCode();
+  const blob = await sealWithRecoveryCode(lmk, code, 'lab_demo');
+  const sloppy = code.toLowerCase().replace(/-/g, ' ');
+  eq([...await openWithRecoveryCode(blob, sloppy)], [...lmk]);
+  eq(normaliseRecoveryCode('o0-Il1'), '00111'); // o→0, 0, I→1, l→1, 1
+});
+
+await t('recovery: a wrong code fails closed', async () => {
+  const lmk = createLabKey();
+  const blob = await sealWithRecoveryCode(lmk, generateRecoveryCode(), 'lab_demo');
+  await throws(() => openWithRecoveryCode(blob, generateRecoveryCode()));
+});
+
+await t('fingerprint: stable per identity, different across identities', async () => {
+  const a1 = await fingerprint(alice.pub), a2 = await fingerprint(alice.pub);
+  const b1 = await fingerprint(bob.pub);
+  eq(a1.hex, a2.hex);
+  ok(a1.hex !== b1.hex);
+  ok(/^[0-9A-F]{4}( [0-9A-F]{4}){7}$/.test(a1.hex), 'unexpected hex shape: ' + a1.hex);
+  eq(a1.emoji.length, 6);
+});
+
+await t('fingerprint: safety number is symmetric', async () => {
+  const ab = await safetyNumber(alice.pub, bob.pub);
+  const ba = await safetyNumber(bob.pub, alice.pub);
+  eq(ab.digits, ba.digits);
+  ok(ab.digits !== (await safetyNumber(alice.pub, node.pub)).digits);
+});
+
+const sum = document.getElementById('sum');
+sum.textContent = pass + ' passed, ' + fail + ' failed';
+sum.style.color = fail ? '#F87171' : '#34D399';
+window.__TESTS__ = { pass, fail, results };
+</script>

@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Living Paper — 연구자를 위한 미팅 어시스턴트</title>
+<meta name="description" content="미팅에서 이해한 척 넘긴 순간을, 우리 랩의 맥락으로 설명해 주는 어시스턴트. AI 연산은 원내에서, 클라우드는 암호문 전달만 합니다.">
+<meta property="og:title" content="Living Paper — 연구자를 위한 미팅 어시스턴트">
+<meta property="og:description" content="가짜 이해(Fake Ah-Moment)를 끝내는 방법. 원내 처리 · 제로널리지 릴레이 · 랩 맥락 기반 설명.">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="ko_KR">
+<meta name="theme-color" content="#0F172A" media="(prefers-color-scheme:dark)">
+<meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme:light)">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230F172A'/><path d='M10 22V10' stroke='%2338BDF8' stroke-width='2.6' stroke-linecap='round'/><path d='M10 22h7' stroke='%2338BDF8' stroke-width='2.6' stroke-linecap='round'/><circle cx='21.5' cy='12.5' r='3' stroke='%237DD3FC' stroke-width='2'/></svg>">
+<link rel="stylesheet" href="assets/css/tokens.css">
+<style>
+  /* Landing-only styles. The deck's language: white space, one sky accent,
+     slate ink, generous type. */
+  .lp{max-width:1080px;margin:0 auto;padding:0 24px}
+  .nav{display:flex;align-items:center;gap:10px;padding:22px 0}
+  .nav .logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px;color:var(--ink);letter-spacing:-.02em}
+  .nav .logo svg{width:28px;height:28px}
+  .nav .sp{flex:1}
+  .nav a.gh{font-size:13.5px;color:var(--mut);text-decoration:none;padding:8px 12px;border-radius:10px}
+  .nav a.gh:hover{background:var(--surface-3);color:var(--ink)}
+  .nav a.cta{font-size:14px;font-weight:650;color:#fff;background:var(--accent-press);
+    padding:9px 16px;border-radius:11px;text-decoration:none;transition:.16s}
+  .nav a.cta:hover{background:var(--accent-text)}
+
+  .hero{padding:64px 0 40px;text-align:center}
+  .hero .badge{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:650;
+    color:var(--accent-text);background:color-mix(in srgb,var(--accent) 12%,transparent);
+    border:1px solid color-mix(in srgb,var(--accent) 32%,transparent);
+    padding:6px 13px;border-radius:999px;margin-bottom:22px}
+  .hero h1{font-size:clamp(30px,5.4vw,52px);font-weight:800;letter-spacing:-.04em;line-height:1.14;
+    color:var(--ink);max-width:21ch;margin:0 auto}
+  .hero h1 em{font-style:normal;color:var(--accent-text)}
+  .hero p{font-size:clamp(15.5px,2vw,18px);color:var(--mut);max-width:46ch;margin:20px auto 0;line-height:1.75}
+  .hero .actions{display:flex;gap:11px;justify-content:center;flex-wrap:wrap;margin-top:32px}
+  .hero .actions a{display:inline-flex;align-items:center;gap:9px;padding:14px 26px;border-radius:14px;
+    font-size:15.5px;font-weight:700;text-decoration:none;transition:.18s var(--ease)}
+  .hero .actions .go{background:var(--accent-press);color:#fff;box-shadow:0 14px 34px -12px rgba(14,165,233,.5)}
+  .hero .actions .go:hover{background:var(--accent-text);transform:translateY(-1px)}
+  .hero .actions .alt{background:var(--surface);color:var(--ink);border:1px solid var(--line-2)}
+  .hero .actions .alt:hover{border-color:var(--accent)}
+  .hero .fine{font-size:12.5px;color:var(--faint);margin-top:16px}
+
+  .strip{display:flex;justify-content:center;gap:clamp(18px,4vw,44px);flex-wrap:wrap;
+    padding:26px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-top:44px}
+  .strip .s{text-align:center}
+  .strip .v{font-size:26px;font-weight:800;color:var(--ink);letter-spacing:-.03em}
+  .strip .v b{color:var(--accent-text)}
+  .strip .k{font-size:12.5px;color:var(--mut);margin-top:3px}
+
+  section{padding:64px 0}
+  .sec-k{font-size:12px;font-weight:750;letter-spacing:.1em;text-transform:uppercase;color:var(--accent-text);margin-bottom:12px}
+  .sec-h{font-size:clamp(23px,3.4vw,32px);font-weight:800;letter-spacing:-.03em;color:var(--ink);line-height:1.25;max-width:26ch}
+  .sec-p{font-size:15.5px;color:var(--mut);line-height:1.8;max-width:60ch;margin-top:14px}
+
+  .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-top:36px}
+  .step{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:26px 24px;position:relative}
+  .step .n{position:absolute;top:22px;right:22px;font-size:13px;font-weight:800;color:var(--faint);font-family:var(--mono)}
+  .step .ic{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;
+    background:color-mix(in srgb,var(--accent) 13%,transparent);color:var(--accent-text);margin-bottom:16px}
+  .step .ic svg{width:22px;height:22px}
+  .step h3{font-size:16.5px;font-weight:750;color:var(--ink);letter-spacing:-.015em}
+  .step p{font-size:13.8px;color:var(--mut);line-height:1.7;margin-top:8px}
+
+  /* architecture */
+  .arch{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:clamp(22px,4vw,40px);margin-top:36px}
+  .arch-grid{display:grid;gap:12px;grid-template-columns:1fr}
+  @media(min-width:760px){.arch-grid{grid-template-columns:1fr auto 1fr auto 1fr;align-items:stretch}}
+  .zone{border-radius:16px;padding:22px 20px;border:1px solid var(--line)}
+  .zone .zt{font-size:11.5px;font-weight:750;letter-spacing:.07em;text-transform:uppercase;margin-bottom:11px}
+  .zone h4{font-size:16px;font-weight:750;color:var(--ink);display:flex;align-items:center;gap:8px}
+  .zone h4 svg{width:19px;height:19px}
+  .zone ul{margin:12px 0 0;padding:0;list-style:none}
+  .zone li{font-size:13.2px;color:var(--body);line-height:1.6;padding:5px 0 5px 20px;position:relative}
+  .zone li::before{content:"";position:absolute;left:2px;top:12px;width:6px;height:6px;border-radius:99px;background:var(--accent)}
+  .zone.z-dev{background:color-mix(in srgb,var(--accent) 7%,transparent);border-color:color-mix(in srgb,var(--accent) 30%,transparent)}
+  .zone.z-dev .zt{color:var(--accent-text)}
+  .zone.z-cloud{background:var(--surface-2);border-style:dashed}
+  .zone.z-cloud .zt{color:var(--mut)}
+  .zone.z-cloud li::before{background:var(--line-2)}
+  .zone.z-lab{background:color-mix(in srgb,var(--lock) 7%,transparent);border-color:color-mix(in srgb,var(--lock) 26%,transparent)}
+  .zone.z-lab .zt{color:var(--lock)}
+  .zone.z-lab li::before{background:var(--lock)}
+  .pipe-a{display:grid;place-items:center;gap:5px;color:var(--mut);font-family:var(--mono);font-size:10.5px;font-weight:700;padding:4px}
+  .pipe-a svg{width:22px;height:22px;color:var(--lock)}
+  @media(max-width:759px){.pipe-a svg{transform:rotate(90deg)}}
+  .arch-note{display:flex;gap:10px;margin-top:22px;padding:15px 17px;border-radius:13px;
+    background:var(--lock-bg);border:1px solid var(--lock-line);font-size:13.5px;color:var(--lock);line-height:1.7}
+  .arch-note svg{width:18px;height:18px;flex:none;margin-top:2px}
+
+  .duo{display:grid;gap:14px;grid-template-columns:1fr;margin-top:36px}
+  @media(min-width:760px){.duo{grid-template-columns:1fr 1fr}}
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:28px 26px}
+  .panel h3{font-size:17px;font-weight:750;color:var(--ink);display:flex;gap:9px;align-items:center}
+  .panel h3 svg{width:20px;height:20px;color:var(--accent-text)}
+  .panel p{font-size:14px;color:var(--mut);line-height:1.75;margin-top:10px}
+  .panel .q{margin-top:16px;padding:14px 16px;border-left:3px solid var(--accent);
+    background:var(--surface-2);border-radius:0 12px 12px 0;font-size:13.5px;color:var(--body);line-height:1.7}
+
+  .cta-end{text-align:center;background:var(--ink);border-radius:26px;padding:clamp(40px,7vw,72px) 24px;margin:20px 0 0}
+  .cta-end h2{font-size:clamp(22px,3.6vw,34px);font-weight:800;letter-spacing:-.03em;color:#F1F5F9;line-height:1.3}
+  .cta-end h2 em{font-style:normal;color:#38BDF8}
+  .cta-end p{color:#94A3B8;font-size:14.5px;margin-top:12px;line-height:1.7}
+  .cta-end a{display:inline-flex;align-items:center;gap:9px;margin-top:26px;padding:14px 30px;border-radius:14px;
+    background:#38BDF8;color:#04283C;font-size:15.5px;font-weight:800;text-decoration:none;transition:.18s}
+  .cta-end a:hover{background:#7DD3FC;transform:translateY(-1px)}
+
+  footer{padding:44px 0 56px;text-align:center;font-size:12.5px;color:var(--faint);line-height:1.8}
+  footer a{color:var(--mut)}
+</style>
+</head>
+<body>
+<div class="lp">
+  <nav class="nav">
+    <span class="logo">
+      <svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><rect x="1.5" y="1.5" width="29" height="29" rx="8" fill="#0F172A"/><path d="M9 22V10" stroke="#38BDF8" stroke-width="2.4" stroke-linecap="round"/><path d="M9 22h7.5" stroke="#38BDF8" stroke-width="2.4" stroke-linecap="round"/><circle cx="21" cy="12.5" r="3.2" stroke="#7DD3FC" stroke-width="2"/><path d="M21 17.2v4.6" stroke="#7DD3FC" stroke-width="2" stroke-linecap="round"/></svg>
+      Living Paper
+    </span>
+    <span class="sp"></span>
+    <a class="gh" href="https://github.com/euichanlee0608-svg" target="_blank" rel="noopener">GitHub</a>
+    <a class="cta" href="app.html">앱 열기</a>
+  </nav>
+
+  <header class="hero">
+    <span class="badge">🔒 원내 처리 · 클라우드는 암호문 전달만</span>
+    <h1>미팅에서 <em>이해한 척</em>한 순간,<br>끝나고 우리 랩 맥락으로 메웁니다</h1>
+    <p>모르는 용어가 나와도 분위기상 고개를 끄덕이게 됩니다. Living Paper는 그 순간을
+    버튼 하나로 표시해 두었다가, 미팅이 끝나면 <b>우리 연구실의 문서와 규약을 근거로</b> 설명해 줍니다.</p>
+    <div class="actions">
+      <a class="go" href="app.html">지금 데모 써보기 →</a>
+      <a class="alt" href="#architecture">보안 구조 보기</a>
+    </div>
+    <p class="fine">설치 없음 · 계정 없음 · 데모의 모든 연산이 지금 이 브라우저 안에서 실행됩니다</p>
+
+    <div class="strip">
+      <div class="s"><div class="v">50회</div><div class="k">심층 인터뷰로 검증한 문제</div></div>
+      <div class="s"><div class="v"><b>95%</b></div><div class="k">온프레미스 보안 요구</div></div>
+      <div class="s"><div class="v"><b>88%</b></div><div class="k">도메인 특화 정확도 요구</div></div>
+      <div class="s"><div class="v">30%</div><div class="k">실시간 요약 선호 — 그래서 사후 정리</div></div>
+    </div>
+  </header>
+
+  <section>
+    <div class="sec-k">How it works</div>
+    <h2 class="sec-h">회의 중에는 버튼 하나,<br>정리는 회의가 끝난 뒤에</h2>
+    <p class="sec-p">인터뷰에서 확인한 사실: 연구자들은 회의 중에 방해받는 것보다, 끝난 뒤 보안이
+    유지된 상태에서 정확한 답을 얻는 쪽을 선호합니다. 그래서 흐름 전체를 사후(post-hoc)로 설계했습니다.</p>
+    <div class="steps">
+      <div class="step"><span class="n">01</span>
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.5v7"/><path d="M9 6.5v5"/><path d="M15 7.5v4"/><path d="M6 10v3.5a6 6 0 0 0 6 6h.6a6 6 0 0 0 5.4-5.97V10"/></svg></span>
+        <h3>놓친 순간을 표시</h3>
+        <p>모르는 얘기가 나오면 큰 버튼 한 번. 녹음도, 타이핑도, 화면 볼 일도 없습니다. 시각만 기록됩니다.</p>
+      </div>
+      <div class="step"><span class="n">02</span>
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 11.2V4.5A1 1 0 0 1 4.5 3.5h6.7a1 1 0 0 1 .7.3l8.3 8.3a1 1 0 0 1 0 1.4l-6.7 6.7a1 1 0 0 1-1.4 0l-8.3-8.3a1 1 0 0 1-.3-.7z"/><circle cx="8" cy="8" r="1.3" fill="currentColor" stroke="none"/></svg></span>
+        <h3>끝나면 키워드 태깅</h3>
+        <p>미팅 후, 표시해 둔 지점마다 못 알아들은 용어를 답니다. 랩 용어집이 추천을 띄워 대부분 두 번의 탭이면 됩니다.</p>
+      </div>
+      <div class="step"><span class="n">03</span>
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2.2"/><path d="M8 10.5V7.8a4 4 0 0 1 8 0v2.7"/></svg></span>
+        <h3>기기에서 봉인 후 전송</h3>
+        <p>키워드와 메모는 브라우저 안에서 암호화됩니다. 클라우드 릴레이는 열 수 없는 봉투를 원내로 전달만 합니다.</p>
+      </div>
+      <div class="step"><span class="n">04</span>
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 13.6 8 18 9.6 13.6 11.2 12 15.7 10.4 11.2 6 9.6 10.4 8z"/></svg></span>
+        <h3>우리 랩 맥락으로 설명</h3>
+        <p>원내 노드의 로컬 LLM이 랩 SOP·실험노트·규약을 검색해, “우리 랩에서는 왜 그렇게 하는지”까지 근거와 함께 답합니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="architecture">
+    <div class="sec-k">Architecture</div>
+    <h2 class="sec-h">클라우드가 뚫려도<br>연구 데이터는 읽히지 않는 구조</h2>
+    <p class="sec-p">병원과 협력하는 랩은 데이터를 외부 클라우드 AI에 넣을 수 없습니다.
+    그래서 역할을 갈랐습니다 — <b>암호화와 AI 연산은 전부 경계 안에서</b>, 클라우드는 인증과 암호문 중계만.</p>
+
+    <div class="arch">
+      <div class="arch-grid">
+        <div class="zone z-dev">
+          <div class="zt">내 기기 · 브라우저</div>
+          <h4><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="6.5" y="2.8" width="11" height="18.4" rx="2.4"/><path d="M10.6 18.4h2.8"/></svg>봉인하는 곳</h4>
+          <ul>
+            <li>P-256 기기 키 — <b>반출 불가</b>로 생성</li>
+            <li>AES-256-GCM 종단 봉인</li>
+            <li>수신자별 키 래핑 (ECDH-ES)</li>
+            <li>ECDSA 서명으로 위조 차단</li>
+          </ul>
+        </div>
+        <div class="pipe-a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2.2"/><path d="M8 10.5V7.8a4 4 0 0 1 8 0v2.7"/></svg>암호문</div>
+        <div class="zone z-cloud">
+          <div class="zt">클라우드 · 신뢰하지 않음</div>
+          <h4><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7.2 18.5A4.2 4.2 0 0 1 7 10.1a5.6 5.6 0 0 1 10.8-1.3A3.9 3.9 0 0 1 17.6 18.5z"/></svg>전달만 하는 곳</h4>
+          <ul>
+            <li>인증 · 기기 디렉터리 · 큐잉</li>
+            <li>보는 것: 라우팅 메타데이터뿐</li>
+            <li>복호화 키 <b>없음</b> — 유출돼도 암호문</li>
+            <li>키 바꿔치기는 대면 지문 확인으로 탐지</li>
+          </ul>
+        </div>
+        <div class="pipe-a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2.2"/><path d="M8 10.5V7.8a4 4 0 0 1 8 0v2.7"/></svg>암호문</div>
+        <div class="zone z-lab">
+          <div class="zt">원내 · 연구실 인프라</div>
+          <h4><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="6" rx="1.8"/><rect x="3.5" y="13.5" width="17" height="6" rx="1.8"/><path d="M7 7.5h.01M7 16.5h.01"/></svg>연산하는 곳</h4>
+          <ul>
+            <li>복호화는 여기서만 일어남</li>
+            <li>로컬 LLM + 랩 지식베이스 RAG</li>
+            <li>지식베이스는 랩 키로 저장 시 암호화</li>
+            <li>답변도 봉인되어 같은 길로 회신</li>
+          </ul>
+        </div>
+      </div>
+      <div class="arch-note">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2 19 6v5.4c0 4.2-2.9 7.6-7 9.4-4.1-1.8-7-5.2-7-9.4V6z"/><path d="M9.3 12.2l1.9 1.9 3.6-3.7"/></svg>
+        <span>앱의 <b>보안 탭</b>에서 이 구조를 직접 검증할 수 있습니다 — 릴레이가 저장한 실제 바이트를 열어,
+        방금 입력한 단어를 그 안에서 검색해 보세요. 0건이 나와야 정상이고, 실제로 0건이 나옵니다.</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-k">Why not just ChatGPT?</div>
+    <h2 class="sec-h">범용 AI가 못 하는 두 가지</h2>
+    <div class="duo">
+      <div class="panel">
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H10a2.5 2.5 0 0 1 2 1 2.5 2.5 0 0 1 2-1h4.5A1.5 1.5 0 0 1 20 5.5v11a1.5 1.5 0 0 1-1.5 1.5H14a2.5 2.5 0 0 0-2 1 2.5 2.5 0 0 0-2-1H5.5A1.5 1.5 0 0 1 4 16.5z"/><path d="M12 5v14"/></svg>우리 랩의 맥락</h3>
+        <p>“PDMS 사전경화”의 사전적 정의는 어디서나 얻을 수 있습니다. 하지만 <b>우리 랩이 왜 65 °C로
+        고정했는지</b>는 작년 3차 배치의 실패 기록을 읽은 모델만 답할 수 있습니다.</p>
+        <div class="q">“단순 요약을 넘어, 우리 랩의 이전 회의와 문서 맥락을 고려한 맞춤형 Q&A” — 인터뷰에서 가장 많이 나온 요구</div>
+      </div>
+      <div class="panel">
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2 19 6v5.4c0 4.2-2.9 7.6-7 9.4-4.1-1.8-7-5.2-7-9.4V6z"/><path d="M9.3 12.2l1.9 1.9 3.6-3.7"/></svg>병원급 보안</h3>
+        <p>병원 협력 과제의 실험 데이터는 <b>기관 밖으로 나갈 수 없습니다</b>. 외부 클라우드 AI에 붙여넣는 순간
+        규정 위반입니다. Living Paper는 애초에 평문이 경계를 넘지 않도록 설계됐습니다.</p>
+        <div class="q">“병원과 협력하는 바이오 엔지니어들이 데이터 보안 문제로 기존 클라우드 AI를 쓰지 못한다” — 50회 인터뷰의 핵심 인사이트</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="cta-end">
+      <h2>다음 미팅부터는<br><em>모르는 걸 모른다고</em> 표시하세요</h2>
+      <p>데모는 계정 없이 바로 열립니다. 예시 랩미팅이 준비되어 있어 1분이면 전체 흐름을 볼 수 있습니다.</p>
+      <a href="app.html">Living Paper 데모 열기 →</a>
+    </div>
+  </section>
+
+  <footer>
+    Living Paper · 고려대학교 실험실창업혁신단 I-Corps 2026 · UC Berkeley KIC<br>
+    MVP 데모 — 데이터는 이 브라우저를 떠나지 않습니다 ·
+    <a href="https://github.com/euichanlee0608-svg" target="_blank" rel="noopener">GitHub</a>
+  </footer>
+</div>
+</body>
+</html>
