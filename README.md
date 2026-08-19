@@ -7,7 +7,14 @@
 
 **Live demo:** https://euichanlee0608-svg.github.io/living-paper/
 — 계정·설치 없이 열립니다. 데모의 릴레이와 원내 노드는 브라우저 탭 안에서 시뮬레이션되며,
-**앱을 여는 순간부터 외부로 나가는 요청은 0건**입니다(자기 오리진의 정적 파일 제외).
+**앱(`app.html`)을 여는 순간부터 외부로 나가는 요청은 0건**입니다(자기 오리진의 정적 파일 제외).
+랜딩 페이지에만 방문 집계 핑이 하나 있고, 앱 화면에는 붙이지 않았습니다 — 그 주장을
+흐리지 않기 위해서입니다.
+
+> 레포가 둘입니다. 개발·히스토리는 비공개 `Living_paper`, 배포는 공개 미러
+> [`living-paper`](https://github.com/euichanlee0608-svg/living-paper)에서 서빙됩니다
+> (무료 플랜은 비공개 레포 Pages를 지원하지 않음). 두 레포는 같은 내용을 유지하며,
+> **양쪽 모두에 푸시해야 라이브가 바뀝니다.**
 
 > 50회 심층 인터뷰에서 확인한 두 가지 요구가 설계를 결정했습니다:
 > **95%가 온프레미스 보안**을, **88%가 도메인 특화 정확도**를 요구했고,
@@ -68,7 +75,11 @@ src/
   ui/
     components/qr.js  QR 인코더 (외부 의존성 0, 레퍼런스 대조 검증됨)
     views/            미팅·정리·설명·지식·보안·설정
+assets/
+  css/                화면 토큰 · 앱 스타일
+  beacon.js           랜딩 페이지 방문 알림 (앱 화면에는 붙이지 않음)
 relay/worker.js       Cloudflare Workers 릴레이 레퍼런스 (KV 큐)
+wrangler.toml         릴레이 배포·로컬 실행 설정
 node/server.py        원내 노드 레퍼런스 (Python · cryptography · Ollama)
 tests/
   crypto.test.html    암호화 계층 테스트 22건
@@ -103,6 +114,25 @@ python -m http.server 4173
 # → http://localhost:4173/tests/qr.verify.html    QR 대조 검증 45건
 ```
 
+### 전체 스택을 한 대에서 돌리기 (실제 노드로 확인할 때)
+
+시뮬레이터가 아니라 진짜 릴레이·진짜 로컬 모델로 왕복시켜 보는 방법입니다.
+세 개를 각각 띄운 뒤, 앱 **설정 탭**에 릴레이 주소를 넣고 전환하면 됩니다.
+
+```bash
+npx wrangler dev                       # 1. 릴레이 → http://127.0.0.1:8787 (로컬 KV, 계정 불필요)
+
+python3 -m venv .venv && .venv/bin/pip install cryptography requests
+ollama pull exaone3.5:7.8b             # 2. 원내 노드 (어떤 로컬 모델이든 됨)
+LP_RELAY_URL=http://127.0.0.1:8787 LP_MODEL=exaone3.5:7.8b .venv/bin/python node/server.py
+
+python3 -m http.server 4173            # 3. 프런트 → http://localhost:4173/app.html
+```
+
+⚠️ **앱은 반드시 로컬에서 연 페이지여야 합니다.** 공개 https 페이지(GitHub Pages)에서
+`http://127.0.0.1`의 릴레이를 부르는 것은 브라우저가 막습니다. 실배포에서는 릴레이가
+공개 https(Workers)에 있으므로 이 제약이 사라집니다.
+
 ## 데모 모드 vs 실배포
 
 | | 데모 (기본) | 실배포 |
@@ -117,9 +147,10 @@ python -m http.server 4173
 ### 실배포 절차
 
 ```bash
-# 1. 릴레이
-wrangler kv namespace create LP_KV
-wrangler deploy relay/worker.js        # RELAY_TOKEN 환경변수로 정적 토큰 설정 가능
+# 1. 릴레이 (설정은 wrangler.toml)
+npx wrangler kv namespace create LP_KV   # 출력된 id를 wrangler.toml에 붙여넣기
+npx wrangler secret put RELAY_TOKEN      # 선택 — 접근 토큰
+npx wrangler deploy
 
 # 2. 원내 노드 (연구실 서버)
 pip install cryptography requests
@@ -139,11 +170,20 @@ LP_RELAY_URL=https://<worker>.workers.dev LP_RELAY_TOKEN=... python node/server.
   OpenCV 디코더로 정상 판독되는 것까지 확인.
 - 브라우저 자동화로 전체 플로우 검증: 문서 수집 → 색인 → 그 문서를 근거로 한 답변,
   초대 QR → 랩 키 래핑 전달, 6개 화면 렌더링, 다크/라이트, 데스크톱/모바일.
+- **실제 스택 왕복 1건**(시뮬레이터 아님): 맥미니에서 `wrangler dev` 릴레이 +
+  `node/server.py`(Ollama `exaone3.5:7.8b`)를 띄우고, 브라우저 → 릴레이 → 노드로
+  문서를 색인한 뒤 그 문서를 근거로 답을 받았습니다. 생성 11.5초, `simulated: false`,
+  인용 1건, **릴레이가 저장한 바이트에서 평문 검색 0건**.
 
 ## 현재 한계 (MVP)
 
-- 데모 노드의 생성은 템플릿입니다. 수집한 문서에 대해서는 실제로 검색해 발췌를 인용하지만,
-  문장을 새로 쓰지는 않습니다 (교체 지점은 `node/server.py`의 Ollama 호출).
+- **공개 데모의** 생성은 템플릿입니다. 수집한 문서에 대해서는 실제로 검색해 발췌를 인용하지만,
+  문장을 새로 쓰지는 않습니다 — 계정도 GPU도 없이 열려야 하는 페이지이기 때문입니다.
+  실서버 모드로 전환하면 `node/server.py`의 로컬 모델이 실제로 답을 씁니다(위 검증 참고).
+- 원내 노드의 검색은 토큰 겹침 스코어입니다(`kb_search()`). 임베딩 검색으로 바꿔도
+  와이어 포맷·암호 계층은 그대로입니다.
+- 랩 키는 아직 설치 시 노드에 파일로 넣습니다(`node-state/lab.key`). 노드는 자기 키로
+  KB를 암호화해 자급하지만, 멤버 초대와 같은 봉투 기반 프로비저닝이 다음 단계입니다.
 - PDF 텍스트 추출은 디지털 생성 PDF만 지원합니다. 스캔본·특수 폰트 인코딩은
   **조용히 깨진 텍스트를 넣지 않고 명시적으로 실패**합니다.
 - 릴레이는 메타데이터(누가·언제·몇 바이트)를 봅니다 — 숨기려면 다른 종류의 시스템이 필요합니다.

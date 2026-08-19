@@ -110,6 +110,22 @@ export default {
         return ok({ envelopes });
       }
 
+      // The directory has to be searchable for one thing only: which device
+      // in this lab is the on-prem node. A member's device knows its own kid
+      // but has no way to learn the node's, and asking the user to copy a key
+      // id by hand is how key substitution gets normalised. Roles are
+      // self-declared, so this is a hint, not an authority — the fingerprint
+      // check in the Security screen is what actually binds the identity.
+      if (req.method === 'GET' && path === '/nodes') {
+        const list = await env.LP_KV.list({ prefix: 'dev:' });
+        const nodes = [];
+        for (const k of list.keys) {
+          const row = await env.LP_KV.get(k.name, 'json');
+          if (row?.meta?.role === 'lab-node') nodes.push({ pub: row.pub, meta: row.meta });
+        }
+        return ok({ nodes });
+      }
+
       if (req.method === 'GET' && path === '/health') {
         return ok({ ok: true, service: 'living-paper-relay', knows: 'routing metadata only' });
       }

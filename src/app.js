@@ -95,6 +95,10 @@ export async function connect() {
     await state.relay.registerDevice(state.identity.pub, { role: 'member' });
     state.relay.subscribe(state.identity.kid, onEnvelope);
     state.relay.startPolling(state.identity.kid);
+    // Ask the directory which device is the on-prem node. Trust comes from
+    // the fingerprint check in the Security screen, not from this answer:
+    // the node starts `verified: false` exactly as the simulated one does.
+    state.node = await discoverNode();
   } else {
     state.mode = 'demo';
     state.relay = new MockRelay();
@@ -117,6 +121,25 @@ export async function connect() {
     };
   }
   emit('connection');
+}
+
+/** Find the lab node behind a real relay. Returns null rather than throwing:
+ *  a relay that is up but has no node registered yet is a normal state (the
+ *  node may still be booting), and the Security screen already says so. */
+async function discoverNode() {
+  let nodes = [];
+  try { nodes = await state.relay.listNodes(); }
+  catch { return null; }
+  if (!nodes.length) return null;
+
+  const known = state.lab?.nodeKid;
+  const chosen = nodes.find((n) => n.pub?.kid === known) || nodes[0];
+  return {
+    pub: chosen.pub,
+    label: chosen.meta?.label || 'lab-node',
+    verified: false,
+    fingerprint: await fingerprint(chosen.pub),
+  };
 }
 
 /* ---------------- lab ---------------- */
@@ -169,6 +192,9 @@ export async function verifyNode() {
   if (!state.node) return;
   state.node.verified = true;
   if (state.lab) {
+    // Verification is the moment the node's identity is actually bound to
+    // this lab, so that is when the kid is worth remembering.
+    state.lab.nodeKid = state.node.pub.kid;
     state.lab.nodeVerifiedAt = Date.now();
     await db.put(STORES.labs, state.lab);
   }

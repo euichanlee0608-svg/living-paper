@@ -1,0 +1,16 @@
+# Cloudflare Workers config for the relay (relay/worker.js).
+#
+# Local:  npx wrangler dev            → http://127.0.0.1:8787 with local KV,
+#                                       no Cloudflare account needed.
+# Deploy: npx wrangler kv namespace create LP_KV   → paste the id below
+#         npx wrangler secret put RELAY_TOKEN      → optional access token
+#         npx wrangler deploy
+name = "living-paper-relay"
+main = "relay/worker.js"
+compatibility_date = "2026-08-18"
+
+[[kv_namespaces]]
+binding = "LP_KV"
+# Replace with the id printed by `wrangler kv namespace create LP_KV`.
+# `wrangler dev` ignores it and uses local storage instead.
+id = "REPLACE_WITH_KV_NAMESPACE_ID"

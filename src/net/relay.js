@@ -41,12 +41,16 @@ export class MockRelay extends RelayBase {
   }
 
   async registerDevice(pub, meta = {}) {
-    this.devices.set(pub.kid, pub);
+    this.devices.set(pub.kid, { pub, meta });
     this._audit('device.register', { kid: pub.kid, role: meta.role || 'unknown' }, 0);
     return { ok: true };
   }
 
-  async getDevice(kid) { return this.devices.get(kid) || null; }
+  async getDevice(kid) { return this.devices.get(kid)?.pub || null; }
+
+  async listNodes() {
+    return [...this.devices.values()].filter((d) => d.meta?.role === 'lab-node');
+  }
 
   async postEnvelope(env) {
     await this._delay();
@@ -100,6 +104,11 @@ export class HttpRelay extends RelayBase {
   async getDevice(kid) {
     try { return await this._json('GET', `/devices/${encodeURIComponent(kid)}`); }
     catch { return null; }
+  }
+
+  async listNodes() {
+    const r = await this._json('GET', '/nodes');
+    return r.nodes || [];
   }
 
   async postEnvelope(env) {
