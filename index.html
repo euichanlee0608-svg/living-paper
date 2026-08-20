@@ -14,6 +14,9 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230F172A'/><path d='M10 22V10' stroke='%2338BDF8' stroke-width='2.6' stroke-linecap='round'/><path d='M10 22h7' stroke='%2338BDF8' stroke-width='2.6' stroke-linecap='round'/><circle cx='21.5' cy='12.5' r='3' stroke='%237DD3FC' stroke-width='2'/></svg>">
 <link rel="stylesheet" href="assets/css/tokens.css">
 <style>
+/* 한글 줄바꿈: 단어 중간에서 끊지 않되, 끊을 데가 없으면 넘치지 않게 (플레이북 §2-①) */
+body{word-break:keep-all;overflow-wrap:break-word}
+
   /* Landing, same system as the app: hairline borders instead of shadows,
      6/12px radii, one chromatic accent reserved for the primary action. */
   .lp{max-width:1000px;margin:0 auto;padding:0 22px}
