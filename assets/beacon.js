@@ -6,7 +6,7 @@
  * ?owner=1 로 한 번 들어오면 이후 이 브라우저는 제외된다(github.io 오리진 공유라
  * 내 다른 사이트에도 같이 적용). localhost·127·file:// 은 개발 소음이라 스킵. */
 (function () {
-  var WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxWKySPAxWsYnoZ9zo7G2wUK2CusxPwjy1USt_DyCFmmIe_y2pu8lAKBluImAHXXKHv4A/exec';
+  var WEBAPP_URL = 'https://script.google.com/macros/s/AKfycby6J7xGChz7atOL6sVnbiWui8Z1lXVjeF8WUGTj3MXNgEn7EioTz8xZXb522vkAxkgeXA/exec';
   var SITE = 'livingpaper';
   try {
     if (location.search.indexOf('owner=1') !== -1) {
@@ -15,7 +15,7 @@
       && location.protocol !== 'file:'
       && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
       var img = new Image();
-      img.src = WEBAPP_URL + '?ref=' + encodeURIComponent(SITE + '|' + (document.referrer || 'direct'));
+      img.src = WEBAPP_URL + '?t=pv&s='+encodeURIComponent(SITE)+'&p='+encodeURIComponent(location.pathname+location.hash)+'&r='+encodeURIComponent(document.referrer||'direct')+'&v='+encodeURIComponent((function(){try{var k='__vid__',v=localStorage.getItem(k);if(!v){v=Math.random().toString(36).slice(2)+Date.now().toString(36);localStorage.setItem(k,v);}return v;}catch(e){return'';}})());
     }
   } catch (e) {}
 })();
