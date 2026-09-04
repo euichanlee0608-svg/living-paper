@@ -40,6 +40,12 @@ export function mount(app) {
         <div class="spacer"></div>
         <div id="conn-m"></div>
       </header>
+      <div class="demobar" id="demobar" hidden>
+        <b class="tag">데모</b>
+        <p>암호화·서명·검증은 <b>실제로 동작</b>합니다. 릴레이와 원내 노드는 이 탭 안의
+           모의이고, <b>답변 문장은 템플릿</b>입니다. 수집한 문서는 실제로 검색해 인용합니다.</p>
+        <button class="link" data-go="security">보안 탭에서 직접 확인 →</button>
+      </div>
       <main class="main" id="outlet"></main>
     </div>
 
@@ -92,6 +98,12 @@ function paintNav() {
     <span class="led ${state.node?.verified ? '' : 'warn'}"></span>
     <span>${state.mode === 'demo' ? '데모 노드' : '원내 노드'}
       ${state.node?.verified ? '· 확인됨' : '· 미확인'}</span>`;
+  // The demo runs real crypto but a simulated relay, node and generator.
+  // Saying so only on the answer chip means the reader has already formed
+  // an impression of the product by the time they read it.
+  const db = qs('#demobar');
+  if (db) db.hidden = state.mode !== 'demo';
+
   const c1 = qs('#conn'); if (c1) c1.innerHTML = conn;
   const c2 = qs('#conn-m');
   if (c2) {
