@@ -19,7 +19,13 @@ export function render(root) {
   draw(root);
   S.listen(bus, 'ingest', () => draw(root));
 
-  S.on(root, 'input', '#kbq', (e, el) => { query = el.value; draw(root, true); });
+  // Only the results are redrawn: replacing the search field on every
+  // keystroke broke Korean IME composition (ㅍ피핌… instead of 핌).
+  S.on(root, 'input', '#kbq', (e, el) => {
+    query = el.value;
+    const box = root.querySelector('#kb-results');
+    if (box) box.innerHTML = String(resultsHTML());
+  });
   S.on(root, 'click', '[data-add]', () => openIngest(root));
   S.on(root, 'click', '[data-peek-doc]', (e, el) => {
     const doc = state.ingested.find((d) => d.docId === el.dataset.peekDoc);
@@ -110,13 +116,7 @@ async function handle(files, stage, root) {
 }
 
 /* ---------- main view ---------- */
-function draw(root, keepFocus = false) {
-  const q = query.trim().toLowerCase();
-  const terms = GLOSSARY.filter((g) => !q
-    || [g.term, ...g.aliases, g.general, g.lab].join(' ').toLowerCase().includes(q));
-  const docs = DOCS.filter((d) => !q || `${d.title} ${d.excerpt} ${d.kind}`.toLowerCase().includes(q));
-  const mine = state.ingested.filter((d) => !q || d.title.toLowerCase().includes(q));
-
+function draw(root) {
   root.innerHTML = String(html`
     <div class="view">
       <div class="view-head">
@@ -137,6 +137,18 @@ function draw(root, keepFocus = false) {
                placeholder="${esc('용어, 문서, 내용 검색')}" autocomplete="off">
       </div>
 
+      <div id="kb-results">${resultsHTML()}</div>
+    </div>`);
+}
+
+function resultsHTML() {
+  const q = query.trim().toLowerCase();
+  const terms = GLOSSARY.filter((g) => !q
+    || [g.term, ...g.aliases, g.general, g.lab].join(' ').toLowerCase().includes(q));
+  const docs = DOCS.filter((d) => !q || `${d.title} ${d.excerpt} ${d.kind}`.toLowerCase().includes(q));
+  const mine = state.ingested.filter((d) => !q || d.title.toLowerCase().includes(q));
+
+  return html`
       ${mine.length ? html`
         <div class="sec-label">이 기기에서 보낸 문서</div>
         <div class="card" style="margin-bottom:var(--s6)">
@@ -194,12 +206,5 @@ function draw(root, keepFocus = false) {
           ${raw(ico('search'))}
           <b>검색 결과가 없습니다</b>
           <span>“${query}” 관련 항목이 이 랩에 없습니다. 없는 내용은 지어내지 않고 “근거 없음”으로 답합니다.</span>
-        </div>` : ''}
-    </div>`);
-
-  if (keepFocus) {
-    const el = root.querySelector('#kbq');
-    el?.focus();
-    el?.setSelectionRange(el.value.length, el.value.length);
-  }
+        </div>` : ''}`;
 }

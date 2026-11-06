@@ -26,16 +26,25 @@ export function render(root, go) {
     S.listen(bus, ev, () => draw(root, go));
   }
 
+  // Saved quietly: a full redraw here would replace the field mid-typing,
+  // dropping focus after one character and breaking Korean IME input.
+  // Only the buttons that depend on the keyword are patched in place.
   S.on(root, 'input', '[data-kw]', (e, el) => {
-    updateMoment(el.dataset.kw, { keyword: el.value });
+    const id = el.dataset.kw;
+    const m = state.moments.find((x) => x.id === id);
+    if (m) m.keyword = el.value;
+    updateMoment(id, { keyword: el.value }, { quiet: true });
+    const ask = root.querySelector(`[data-ask="${CSS.escape(id)}"]`);
+    if (ask) ask.disabled = !el.value.trim();
+    syncAskAll(root);
+  });
+
+  S.on(root, 'keydown', '[data-kw]', (e, el) => {
+    if (e.key === 'Enter' && !e.isComposing) el.blur();
   });
 
   S.on(root, 'click', '[data-suggest]', (e, el) => {
-    const input = root.querySelector(`[data-kw="${CSS.escape(el.dataset.for)}"]`);
-    if (!input) return;
-    input.value = el.dataset.suggest;
-    updateMoment(el.dataset.for, { keyword: el.value = el.dataset.suggest });
-    input.focus();
+    updateMoment(el.dataset.for, { keyword: el.dataset.suggest });
   });
 
   S.on(root, 'click', '[data-ask]', async (e, el) => {
@@ -57,10 +66,24 @@ export function render(root, go) {
   });
 
   S.on(root, 'click', '[data-peek]', (e, el) => relayPeek(el.dataset.peek));
-  S.on(root, 'click', '[data-see-answer]', () => go('answers'));
+  S.on(root, 'click', '[data-see-answer]', (e, el) => {
+    location.hash = el.dataset.seeAnswer ? `#/answers/${el.dataset.seeAnswer}` : '#/answers';
+  });
 }
 
 export function teardown() { S.clear(); }
+
+const readyCount = () =>
+  state.moments.filter((m) => m.keyword?.trim() && m.status !== 'answered' && m.status !== 'sent').length;
+
+function syncAskAll(root) {
+  const btn = root.querySelector('[data-ask-all]');
+  if (!btn) return;
+  const n = readyCount();
+  btn.hidden = !n;
+  const c = btn.querySelector('[data-ready]');
+  if (c) c.textContent = n;
+}
 
 function draw(root, go) {
   const scrollTop = root.scrollTop;
@@ -81,13 +104,21 @@ function draw(root, go) {
   }
 
   const answered = moments.filter((m) => m.status === 'answered').length;
-  const ready = moments.filter((m) => m.keyword?.trim() && m.status !== 'answered' && m.status !== 'sent').length;
+  const ready = readyCount();
+  const sub = `${meeting.title} · 표시한 지점 ${moments.length}개${answered ? ` · 설명 완료 ${answered}개` : ''}`;
+
+  if (patchRows(root, moments)) {
+    const el = root.querySelector('.sub-view');
+    if (el) el.textContent = sub;
+    syncAskAll(root);
+    return;
+  }
 
   root.innerHTML = html`
     <div class="view">
       <div class="view-head">
         <h1 class="h-view">정리</h1>
-        <p class="sub-view">${meeting.title} · 표시한 지점 ${moments.length}개${answered ? ` · 설명 완료 ${answered}개` : ''}</p>
+        <p class="sub-view">${sub}</p>
       </div>
 
       ${moments.length === 0 ? html`
@@ -97,10 +128,10 @@ function draw(root, go) {
           다음 미팅에서 모르는 이야기가 나오면 큰 버튼을 눌러 두세요.
         </div>` : html`
 
-        ${ready ? html`
-          <button class="btn btn-primary btn-block" data-ask-all style="margin-bottom:var(--s4)">
-            ${raw(ico('send'))} 키워드 입력된 ${ready}개 한번에 요청
-          </button>` : ''}
+        <button class="btn btn-primary btn-block" data-ask-all style="margin-bottom:var(--s4)"
+                ${ready ? '' : raw('hidden')}>
+          ${raw(ico('send'))} <span>키워드 입력된 <span data-ready>${ready}</span>개 한번에 요청</span>
+        </button>
 
         <div class="card">
           ${moments.map((m) => momentHTML(m))}
@@ -115,6 +146,25 @@ function draw(root, go) {
   root.scrollTop = scrollTop;
 }
 
+/** Progress events arrive while the user may be typing in another row.
+ *  Replace only the rows, and leave the one holding focus alone while it is
+ *  still in the same state — otherwise focus and IME composition break. */
+function patchRows(root, moments) {
+  const rows = [...root.querySelectorAll('[data-row]')];
+  if (!rows.length || rows.length !== moments.length
+      || rows.some((r, i) => r.dataset.row !== moments[i].id)) return false;
+  const active = document.activeElement;
+  moments.forEach((m, i) => {
+    const row = rows[i];
+    // Only the keyword field needs protecting. A focused suggestion chip
+    // must not block the redraw, or its keyword never reaches the field.
+    if (active?.matches?.('[data-kw]') && row.contains(active)
+        && row.dataset.status === m.status) return;
+    row.outerHTML = String(momentHTML(m));
+  });
+  return true;
+}
+
 function momentHTML(m) {
   const job = m.jobId ? state.jobs.get(m.jobId) : null;
   const answered = m.status === 'answered';
@@ -122,7 +172,7 @@ function momentHTML(m) {
   const suggestions = suggestFor(m);
 
   return html`
-    <div class="moment">
+    <div class="moment" data-row="${m.id}" data-status="${m.status}">
       <div class="ts">${fmtTime(m.atSec)}</div>
       <div class="body">
         <div class="note">${m.note || ''}</div>
@@ -133,7 +183,7 @@ function momentHTML(m) {
             <div class="row">
               ${job ? html`<button class="btn btn-sm" data-peek="${m.jobId}">
                 ${raw(ico('eye'))} 릴레이가 본 것</button>` : ''}
-              <button class="btn btn-sm" data-see-answer>설명 보기 ${raw(ico('chevron'))}</button>
+              <button class="btn btn-sm" data-see-answer="${m.jobId || ''}">설명 보기 ${raw(ico('chevron'))}</button>
             </div>
           </div>`
         : sending ? html`

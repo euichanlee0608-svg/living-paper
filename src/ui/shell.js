@@ -64,12 +64,17 @@ export function mount(app) {
 function pendingCount() {
   return [...state.jobs.values()].filter((j) => j.status === 'sent').length;
 }
+// Answers that existed before this visit count as seen; the dot means
+// "something new arrived since you last looked", so it clears on the tab.
+let seenAnswers = null;
 function unreadAnswers() {
-  return state.answers.size;
+  if (seenAnswers === null) seenAnswers = state.answers.size;
+  return Math.max(0, state.answers.size - seenAnswers);
 }
 
 function paintNav() {
   const active = routeId();
+  if (active === 'answers') seenAnswers = state.answers.size;
   const badge = { review: pendingCount(), answers: unreadAnswers() };
 
   const rail = qs('#rail-nav');

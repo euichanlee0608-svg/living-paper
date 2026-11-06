@@ -49,7 +49,13 @@ export function render(root) {
       await setRelay({ url, token: token || null });
       toast('실서버 모드로 전환했습니다', { icon: ico('check') });
       draw(root);
-    } catch (e) { toast(e.message, { icon: ico('alert') }); }
+    } catch (e) {
+      toast(e.message, { icon: ico('alert') });
+      // Falling back to the demo redraws this form; give the user back what they typed.
+      draw(root);
+      root.querySelector('#relay-url').value = url;
+      root.querySelector('#relay-token').value = token;
+    }
   });
 
   S.on(root, 'click', '[data-demo-mode]', async () => {
@@ -62,7 +68,7 @@ export function render(root) {
   S.on(root, 'click', '[data-theme]', (e, el) => {
     const next = el.dataset.theme;
     document.documentElement.setAttribute('data-theme', next);
-    localStorage.setItem('lp-theme', next);
+    try { localStorage.setItem('lp-theme', next); } catch { /* storage blocked: this visit only */ }
     draw(root);
   });
 }

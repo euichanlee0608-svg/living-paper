@@ -39,7 +39,7 @@ npx wrangler dev                       # 릴레이 127.0.0.1:8787 (로컬 KV, CF
 LP_RELAY_URL=http://127.0.0.1:8787 LP_MODEL=exaone3.5:7.8b .venv/bin/python node/server.py
 python3 -m http.server 4173            # 앱 설정 탭 → 릴레이 주소 입력 → 전환
 ```
-venv는 `~/living_paper/.venv`(cryptography·requests, 규칙 #10.5).
+venv는 `~/webapps/living_paper/.venv`(cryptography·requests, 규칙 #10.5).
 ⚠️ 앱은 **로컬에서 연 페이지**여야 한다. 공개 https 페이지에서 `http://127.0.0.1`을 부르는 건 크롬이 막는다.
 
 ## 이 제품에서 깨면 안 되는 것

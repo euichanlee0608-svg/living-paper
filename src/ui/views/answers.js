@@ -16,6 +16,10 @@ const S = scope();
 export function render(root, go) {
   S.clear();
   draw(root);
+  // "설명 보기" on a moment links here as #/answers/<jobId>: open at that card.
+  const focus = (location.hash.split('/')[2] || '');
+  const card = focus && root.querySelector(`[data-answer="${CSS.escape(focus)}"]`);
+  if (card) requestAnimationFrame(() => card.scrollIntoView({ block: 'start' }));
   for (const ev of ['answer', 'job']) S.listen(bus, ev, () => draw(root));
 
   S.on(root, 'click', '[data-peek]', (e, el) => relayPeek(el.dataset.peek));
@@ -67,7 +71,7 @@ function answerHTML(jobId, a, job) {
   const low = !a.grounded;
 
   return html`
-    <div class="card answer" style="margin-bottom:var(--s4)">
+    <div class="card answer" data-answer="${jobId}" style="margin-bottom:var(--s4);scroll-margin-top:72px">
       <div class="answer-head">
         <div class="between wrap" style="align-items:flex-start">
           <div class="grow">
@@ -139,7 +143,9 @@ function answerHTML(jobId, a, job) {
         <div class="divider"></div>
         <div class="between wrap" style="gap:8px">
           <div class="tiny mut mono">
-            ${a.meta?.model || 'local'} · ${a.meta?.tokensIn || 0}→${a.meta?.tokensOut || 0} tok · ${a.meta?.ms || 0}ms
+            ${a.simulated
+              ? '모의 노드 · 템플릿 문장 (LLM 호출 없음)'
+              : `${a.meta?.model || 'local'} · ${a.meta?.tokensIn || 0}→${a.meta?.tokensOut || 0} tok · ${a.meta?.ms || 0}ms`}
           </div>
           <div class="row" style="gap:7px">
             <button class="btn btn-sm" data-copy="${jobId}">${raw(ico('copy'))} 복사</button>

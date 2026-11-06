@@ -5,6 +5,9 @@
    matters on a given screen.
    ============================================================ */
 
+/* 한글 줄바꿈: 단어 중간에서 끊지 않되, 끊을 데가 없으면 넘치지 않게 (플레이북 §2-①) */
+body{word-break:keep-all;overflow-wrap:break-word}
+
 .app{min-height:100dvh;display:flex;flex-direction:column;background:var(--canvas)}
 
 /* ---------- top bar (mobile) ---------- */
@@ -143,6 +146,8 @@
 .btn-block{width:100%}
 .btn-sm{height:26px;padding:0 9px;font-size:12px;gap:5px}
 .btn-sm svg{width:13px;height:13px}
+@media (max-width:640px){.btn-sm{height:32px;padding:0 11px}}  /* thumb-sized on phones */
+.btn[hidden]{display:none}
 
 .icon-btn{width:28px;height:28px;border-radius:var(--r);display:grid;place-items:center;
   color:var(--text-4);flex:none;transition:.13s var(--ease)}
@@ -168,7 +173,6 @@
   border:1px solid var(--line-2);background:var(--surface-2);color:var(--text);
   font-size:16px;transition:.13s var(--ease);  /* 16px: stops iOS zooming on focus */
 }
-@media (min-width:900px){.field{font-size:13.5px}}
 .field::placeholder{color:var(--text-4)}
 .field:focus{outline:none;border-color:var(--accent);box-shadow:var(--glow);background:var(--surface)}
 textarea.field{height:auto;min-height:76px;padding:9px 10px;line-height:1.6;resize:vertical}
@@ -196,6 +200,7 @@ textarea.field{height:auto;min-height:76px;padding:9px 10px;line-height:1.6;resi
 .status{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--r);
   background:var(--surface-2);border:1px solid var(--line);font-size:12px;color:var(--text-4)}
 .status b{color:var(--text-2);font-weight:var(--w-medium)}
+.status svg{width:14px;height:14px;flex:none;color:var(--text-4)}
 .led{width:6px;height:6px;border-radius:var(--r-full);background:var(--green);flex:none}
 .led.warn{background:var(--amber)}
 .led.off{background:var(--text-4)}

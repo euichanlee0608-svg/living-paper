@@ -80,8 +80,32 @@ export async function boot() {
   }
 
   await connect();
+  if (state.mode === 'demo') await releaseOrphanedJobs();
   state.ready = true;
   emit('ready');
+}
+
+/** The demo relay and node live in this tab's memory, so a reload drops any
+ *  request still in flight. Without this the moment stays "sending" forever
+ *  and can never be sent again. Put it back to taggable, keyword kept. */
+async function releaseOrphanedJobs() {
+  const orphans = new Set();
+  for (const j of state.jobs.values()) {
+    if (j.status !== 'sent') continue;
+    j.status = 'failed'; j.error = 'interrupted';
+    await db.put(STORES.jobs, { ...j, envelope: undefined });
+    orphans.add(j.jobId);
+  }
+  if (!orphans.size) return;
+  for (const m of await db.all(STORES.moments)) {
+    if (m.status === 'sent' && orphans.has(m.jobId)) {
+      await db.put(STORES.moments, { ...m, status: 'captured', jobId: null });
+    }
+  }
+  for (const m of state.moments) {
+    if (m.status === 'sent' && orphans.has(m.jobId)) { m.status = 'captured'; m.jobId = null; }
+  }
+  state.interrupted = orphans.size;
 }
 
 /** Demo mode wires a relay and a node inside this tab. Connected mode
@@ -230,12 +254,14 @@ export async function markMoment(note = '') {
   return moment;
 }
 
-export async function updateMoment(id, patch) {
+/** `quiet` saves without announcing: a keystroke must not make the view
+ *  re-render the field the user is typing in (focus and IME would break). */
+export async function updateMoment(id, patch, { quiet = false } = {}) {
   const i = state.moments.findIndex((m) => m.id === id);
   if (i < 0) return;
   state.moments[i] = { ...state.moments[i], ...patch };
   await db.put(STORES.moments, state.moments[i]);
-  emit('moment', { moment: state.moments[i] });
+  if (!quiet) emit('moment', { moment: state.moments[i] });
 }
 
 export async function endMeeting() {
@@ -334,7 +360,14 @@ async function onEnvelope(env) {
   try {
     answer = await open(env, state.identity, senderPub);
   } catch (e) {
-    if (job) { job.status = 'failed'; job.error = e.message; emit('job', { jobId }); }
+    console.warn('[app] could not open answer', jobId, e.message);
+    if (job) {
+      job.status = 'failed'; job.error = e.message;
+      // Let the moment be sent again instead of showing "sending" forever.
+      await updateMoment(job.momentId, { status: 'captured', jobId: null });
+      emit('job', { jobId });
+      emit('job-failed', { jobId });
+    }
     return;
   }
 
@@ -428,12 +461,24 @@ export async function grantLabKey(memberPub) {
 /* ---------------- relay connection ---------------- */
 
 export async function testRelay(url, token) {
+  if (!/^https?:\/\/[^/\s]+/i.test(url)) throw new Error('주소는 https:// 로 시작해야 합니다');
+  if (location.protocol === 'https:' && /^http:\/\//i.test(url)) {
+    throw new Error('공개 페이지에서는 http:// 릴레이에 연결할 수 없습니다. https 주소를 쓰거나 앱을 로컬에서 여세요');
+  }
   const base = url.replace(/\/$/, '');
-  const res = await fetch(base + '/health', {
-    headers: token ? { authorization: `Bearer ${token}` } : {},
-  });
-  if (!res.ok) throw new Error(`상태 코드 ${res.status}`);
-  return res.json();
+  let res;
+  try {
+    res = await fetch(base + '/health', {
+      headers: token ? { authorization: `Bearer ${token}` } : {},
+    });
+  } catch (e) {
+    console.warn('[relay] health check failed', e);
+    throw new Error('릴레이에 닿지 못했습니다. 주소와 네트워크를 확인하고 다시 눌러 주세요');
+  }
+  if (res.status === 401 || res.status === 403) throw new Error('접근 토큰이 맞지 않습니다');
+  if (!res.ok) throw new Error('릴레이가 응답했지만 정상 상태가 아닙니다. 잠시 뒤 다시 확인해 주세요');
+  try { return await res.json(); }
+  catch { throw new Error('릴레이 주소가 아닌 것 같습니다. 주소를 확인해 주세요'); }
 }
 
 export async function setRelay(cfg) {
@@ -443,7 +488,15 @@ export async function setRelay(cfg) {
   state.nodeSim?.stop();
   state.nodeSim = null;
   state.node = null;
-  await connect();
+  try {
+    await connect();
+  } catch (e) {
+    // A saved relay that cannot be reached would fail every later boot,
+    // so fall back to the demo instead of leaving it half-switched.
+    console.warn('[relay] switch failed', e);
+    await useDemoMode();
+    throw new Error('릴레이에 등록하지 못해 데모 모드로 돌아왔습니다. 주소·토큰을 확인해 주세요');
+  }
 }
 
 export async function useDemoMode() {
